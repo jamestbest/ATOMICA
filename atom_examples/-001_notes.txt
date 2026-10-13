@@ -1,0 +1,90 @@
+X unification of syntax
+  X >/./&
+  X functions/variables
+  X pointers on type >i4
+  X having unary on one side
+X allocators
+  X global
+X accessing namespace with . e.g. for enums
+X defer
+X errors
+  X tagged unions
+  X !
+  X trying and catching
+X entry functions
+X const on types
+X Resource management
+  X '/mark/unmark
+  X propogation through structs
+X looping
+X statements as expressions
+X nullable; ?
+X metaprogramming
+  X type gen
+  X data gen
+    X DSLs/data formats
+  X code gen
+    X formatted code insertion
+    X string insertion
+    X ast reflection
+  X allocations at comptime
+    X being able to save data to output file
+X verification
+  X check_func
+  X check_type?
+X testing
+X C interop
+X including files
+X build system
+X static/global functions/data
+  X how to make things public without header
+X first argument as . syntax
+  X func :: (node: >Node, data: >byte)
+  X node.func(data)
+  X func(node, data)
+X switch
+  X no fallthrough
+X defer
+  X function scope
+  X scope
+X undefined
+X Data oriented design
+- variable args
+X function overloading
+X distinct types
+- auto conversion to the type
+
+
+
+
+
++ unification of syntax               + allocators                          + accessing namespace with . e.g. for enums
+  + >/./&                               + global                            + defer
+  + functions/variables               + entry functions                     + errors
+  + pointers on type >i4              + const on types                        + tagged unions
+  + having unary on one side          + Resource management                   + !
++ looping                               + '/mark/unmark                       + trying and catching
++ statements as expressions             + propogation through structs       + nullable; ?
++ metaprogramming                     + verification                        + testing
+  + type gen                            + check_func                        + C interop
+  + data gen                            + check_type?                       + build system
+    + DSLs/data formats               + including files                     + first argument as . syntax
+  + code gen                          + static/global functions/data          + func :: (node: >Node, data: >byte)
+    + formatted code insertion          + public without header               + node.func(data)
+    + string insertion                + switch                                + func(node, data)
+    + ast reflection                    + no fallthrough                    + defer
+  + allocations at comptime           + undefined                             + function scope/scope
+    + being able to save data to file + Data oriented design                  + deferr/defer!
+- variable args                       + function overloading                - auto conversion to the type
++ distinct types                      + group borrowing
+
+
+
+- Design language
+- Create lexer in C
+- Mock lexer in ATOM
+- Create parser
+- Possible IIR generation here
+- Semantic analysis
+- IR generation
+...

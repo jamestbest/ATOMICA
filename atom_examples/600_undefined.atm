@@ -1,0 +1,10 @@
+// large blocks of memory (or anything) can be set as undefined
+xs: [1000]i4= undefined
+
+MyData :: data {
+    x: i4= 0
+    y: i8= -1
+    is_cool: bool= true
+}
+my_data: MyData= undefined
+// {~, ~, ~}

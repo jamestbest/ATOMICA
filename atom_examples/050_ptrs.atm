@@ -1,0 +1,33 @@
+// having unary operators on one side
+//  * - deref (left)
+//  . - field access (right)
+// -> - ptr field access (right)
+// [] - array access (right)
+
+// x is int**
+// *x[1]
+// get second element and deref
+// deref and get second element
+
+// x[0]= [10,11,12,13]
+// x[1]= [20,21,22,23]
+// x= [*->[10...], *->[20...]]
+
+entry main :: () : i4 {
+  Position :: data { x: i4; y: i4 }
+
+  pos: Position= {x= 12, y= 14}
+  pos.x = 4                     // pos.x = 4
+  pos = {x = 43, y= 165}        // pos   = (Position){...}
+
+  pos_ptr: >Position= >pos      // Position* pos_ptr= &pos
+
+  pos_ptr.x = 4                 // pos_ptr->x = 4
+  pos_ptr.  = {x= 99, y= 100}   // *pos_ptr   = (Position){...}
+
+  ptr_ptr: >>Position= >pos_ptr // Position** ptr_ptr= &pos_ptr
+  ptr_ptr..x = 4                // (*pos_ptr)->x = 4
+  ptr_ptr.x  = 4                // (*pos_ptr)->x = 4
+  ptr_ptr..  = {.x= 99, .y= 100}// **pos_ptr     = (Position){...}
+  ptr_ptr.   = {.x= 99, .y= 100}// **pos_ptr     = (Position){...}
+}

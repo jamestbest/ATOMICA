@@ -1,0 +1,24 @@
+my_func :: (func: (i4):i4, arg: i4): i4 {
+    ret func(arg)
+}
+
+func_t :: (i4): i4  // might be a pain to parse, jai uses #type
+my_func :: (func: func_t, arg: i4): i4 {
+    ret func(arg)
+}
+
+// explicit type
+my_func : (func_ptr_t, i4):i4 : (func_ptr: func_ptr_t, arg:i4): i4 {
+    ret func_ptr(arg)
+}
+
+func_0 :: (a: i4): i4 {}
+func_1 :: (a: i4): i4 {}
+func_2 :: (a: i4): i4 {}
+
+funcs :: [func_0, func_1, func_2]
+funcs: [3](i4):i4 : [func_0, func_1, func_2]
+
+for func: funcs with i {
+    print("%: %", i, i * func(i))
+}

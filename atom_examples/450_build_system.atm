@@ -1,0 +1,19 @@
+// I like Odin's version which I believe is that a folder can be compiled together
+// and JAI's first.jai metaprogram that can be used to set the targets, output, options etc
+
+import "Build"
+entry build_debug :: () : i4 {
+    ws: WorkStation= {}
+
+    ws.set_build_dir("./build/")
+    ws.set_output_name("my_program")
+
+    ws.add_src_dir("./src/")
+    ws.options.build_type= DEBUG
+
+    ret ws.build()
+}
+
+entry build_release :: () : i4 {
+
+}

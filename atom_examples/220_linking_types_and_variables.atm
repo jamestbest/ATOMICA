@@ -1,0 +1,35 @@
+// in data oriented #REF(200) there is a link between the
+//  view and which pool it is from
+EntryV :: ~entry_pool
+// here entry_pool is a variable, not a type
+
+// This could be extended to pointers
+EntryP :: >entry_array
+// creating the requirement that an Entry derives its value from
+//  being a pointer into entry_array
+
+entry_array : [..]Entry : [{}, {}, {}]
+other_array : [..]Entry : [{}]
+
+EntryP :: >entry_array
+
+my_entry: EntryP= >entry_array[0]
+my_entry: EntryP= >other_array[0] // error
+
+// why is this useful?
+// by limiting what pointers could be pointing into
+//  we can invalidate pointers
+//  we can optimise into indexes (Views?...)
+//  there are probably other optimisations
+//  some level of guard rail for the programmer
+
+// specificity seems reasonable
+//  >void       // anything
+//  >i4         // anything that is an i4
+//  >my_arr     // something in this thing
+
+// it makes less sense for variables because you can just use const
+//  >my_var     // this thing
+// x: const= >my_var
+// and it would confuse the array semantics between being the elements inside and the array
+//  in this case >my_arr.data would have to be used

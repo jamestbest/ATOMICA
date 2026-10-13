@@ -1,0 +1,21 @@
+add :: (arr: [~]Node, elem: Node): ~Node {
+
+}
+
+add :: (arr: [..]Node, elem: Node): void {
+
+}
+
+add :: (arr: [*]Node, elem: Node): >Node {
+
+}
+
+arr1: [~]Node= []
+arr2: [..]Node= []
+arr3: [*]Node= []
+
+elem: Node= LitInt(12)
+
+out1 := arr1.add(elem)
+        arr2.add(elem)
+out2 := arr3.add(elem)

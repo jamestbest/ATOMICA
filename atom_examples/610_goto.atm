@@ -1,0 +1,8 @@
+// there will be no goto statement
+// it complicates control flow
+// control flow that goes back up is confined to scopes
+//  i.e. while, for
+// otherwise things flow down, which works well with defer and data analysis
+
+// I do not dislike goto in code however, I use it in C for cleanup code
+//  lost marks in OSC for using it... :[

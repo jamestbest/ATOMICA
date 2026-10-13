@@ -1,0 +1,67 @@
+f3 := open("/etc/shells", WRITE)? {
+    case PERMISSION_DENIED: open("/etc/shells", READ)!
+    case NOT_FOUND(filename): fall
+    case _: ret -1
+}
+
+f3 := open("/etc/shells", WRITE)? {
+    print("WOW\n")
+
+    case PERMISSION_DENIED: yield open("/etc/shells", READ)!
+    case NOT_FOUND(filename): fall
+    case _: break
+
+    print("Getting default value\n")
+    open("/etc/passwd", READ)!
+}
+
+y := x {
+    case 1: -1
+    case _: 0
+}
+
+// while captures x before the result of the scope
+//  so it will not use the returned value of 0, but the value of x
+while x {
+    case 1: print("WOW")
+    case 2: print("WOWOW")
+    case _: break
+
+    x++
+
+    0
+}
+
+while {x= y + x << 1; y += x; y < 100} {
+
+}
+
+// you can name inputs with |<name>|
+// and decompose them as well
+// input -> |<name>| -> {}
+
+MyData :: data {
+    x: i4
+    y: i4
+}
+
+my_func :: () : !MyData
+
+my_data := my_func()? |err| {
+    case ERROR_A: // these use the normal input
+
+    if err == ERROR_A {}
+
+    ret! err
+}
+
+// todo: think
+my_data : MyData = my_func()! | a, b | {
+    a + b
+}
+
+// this can be chained, at least I don't see why not -- decomposing is an issue with 2 inputs
+x! |y| |a b c| { print("% % %  % % %", y.a, y.b, y.c, a, b, c) }
+
+// this could create some aliasing issues though
+//  so the named version are probably going to be const

@@ -1,0 +1,174 @@
+// nullables and errors are treated very similarly with the syntax
+
+// Errors are data
+FileErrors :: data {
+    recoverable: bool= false
+
+    PERMISSION_DENIED
+    NOT_FOUND(filename: string)
+    ALREADY_EXISTS
+}
+
+FileAccessType :: data { READ=1<<0, WRITE=1<<1, READWRITE=READ|WRITE }
+
+// OpenRes :: data {
+//      recoverable: bool= false
+//
+//      PERMISSION_DENIED
+//      NOT_FOUND(filename: string)
+//      ALREADY_EXISTS
+//      OK(>File)
+// }
+open :: (loc: string, access_type: FileAccessType) : FileErrors!>File {
+    if ... {
+        ret! PERMISSION_DENIED
+    }
+
+    if ... ret! NOT_FOUND(loc)
+    switch (x) {
+        case ...: ret! ALREADY_EXISTS(recoverable= true)
+    }
+
+    if y {
+        ret file
+    }
+
+    ret file
+}
+
+close :: (file: >File) !void {
+    if ... {
+        ret! ALREADY_CLOSED
+    }
+
+    signal := get_signal()
+    if ... ret! INTERRUPTED(signal)
+
+    if ... ret! IO_ERROR
+    if ... ret! IO_EEROR // ... why it may not be good
+
+    ...
+}
+
+entry main :: () : !i4 {
+    f1 := open("/etc/passwd", READ)!
+    defer close(f1)
+
+    f2 := open("/etc/shadow", WRITE)? {
+        case NOT_FOUND(filename):
+            print("Cannot open %, file not found", filename);
+            ret 1
+        case PERMISSION_DENIED: ret 1
+        case _: ret -1
+    }
+    defer close(f2)
+
+    f3 := open("/etc/shells", WRITE)? {
+        case PERMISSION_DENIED: open("/etc/shells", READ)!
+        case NOT_FOUND(filename): fall
+        case _: ret -1
+    }
+
+    f4 := open("/etc/shells", READ)? null
+    // f4 is >?File, i.e. nullable
+    // #REF(070)
+
+    f5 : FileErrors!>File = open("/etc/shells", READWRITE)
+    f5= f5? {
+        open("/etc/shells", READ)!
+    }
+    // f5 if f5 is not error else open("/etc/shells", READ)
+
+    f5?= { // f5 = f5? {}
+        open("/etc/shells", READ)
+    } // probably not, see #REF(081)
+
+    file_or_err: !>File= open("/etc/shells")
+    file: >File= open("/etc/shells")!
+    // err: ! = open("/etc/shells")?
+    default_value : >File= open("/etc/shells", WRITE)? open("/etc/shells", READ)!
+
+    close(f1)!
+    close(f2)!
+    close(f3)!
+    close(f4)!
+
+    x := get_user_input()? 0
+    y := get_user_input()? {
+        case BAD_INPUT: yield 1
+        case OTHER_ERROR: yield 12
+        case _: break
+
+        -1
+    }
+    z := get_user_input()! {
+        case 0: print("You gave 0")
+        case 1: print("You gave 1")
+        case _: yield -1
+        1
+    }
+}
+
+// with this model it is difficult to create error values
+x: !i4= (): !i4 {ret! ERROR}() // lambda call
+x: !i4= {yield! ERROR}         // scope value
+x: !i4= !ERROR // ...
+
+// use in if statements
+nullable?   // true if it is null
+erroable?   // the error value, non-zero if error
+if nullable?
+if erroable?
+
+// expressions with default values if it's an error
+nullable? default_value
+erroable? default_value
+x:= nullable? default_value
+x:= erroable? default_value
+
+// pass value up the chain, unwraps value
+nullable!   // return null if null
+erroable!   // return error if error
+x:= nullable!
+x:= erroable!
+
+// use in scope cases
+// this means, use nullable or erroable, if they are values
+//  OR pass the error/null and get the yield value of the scope
+nullable? {
+    // there is no case here, nullable IS null here as we're setting
+    //  the default value
+}
+erroable? { // gives only error cases
+    case PERMISSION_DENIED: ...
+    case NOT_FOUND(filename): ...
+}
+
+// these are switches, so they only return what the scope value is
+x:= nullable {
+    // here it can be null, or any of the underlying values
+    case null: yield 1
+    case 1: yield 2
+    case _: break
+
+    -1
+}
+x:= errorable {
+    // here it can be any of the errors, or any of the underlying values
+    case PERMISSION_DENIED: ...
+    case NOT_FOUND(filename): ...
+    case my_global_file: ...
+}
+
+// to just get the value the error or null must be unwrapped
+x:= nullable! {
+    // here it's the unwrapped value
+    case 1: ...
+    case 10: ...
+
+    0
+}
+x:= errorable! {
+    // here it's the unwrapped value
+    case my_global_file: ...
+}

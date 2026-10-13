@@ -1,0 +1,7 @@
+MyIndex :: distinct i4
+
+x: i4= 12
+y: MyIndex= 10 as MyIndex
+
+x= y // valid
+y= x // invalid

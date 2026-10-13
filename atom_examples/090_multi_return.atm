@@ -1,0 +1,44 @@
+entry main :: () : i4 {
+    multi :: () : data { x: i4, y: i4 } {
+        ret 1, 0
+    }
+    multi :: () : {x: i4, y: i4} {} // alternative?
+
+    res := multi()
+    print("X: %, Y: %", res.x, res.y)
+
+    multi :: () : x: i4, y: i4 {}
+    multi :: () : i4, i4 {} // ...
+    multi :: () : (x: i4, y: i4) {}
+
+    x, y := multi()
+    x, y : data { x: i4, y: i4 } = multi()
+
+    ret y
+}
+
+// the problem with multi return in the destructor or plain multiple returns
+// is the error value
+multi :: () : !data { x: i4, y: i4 }
+res := multi() // multi()? -1
+res= res? {x=0, y=-1}
+
+multi :: () : !(x: i4, y: i4) {}
+x, y := multi() // doesn't make sense
+// would have to unwrap immediately
+x, y := multi()!
+x, y := multi()? {x=0, y=-1}
+
+maybe_xy := multi()
+print("LOG")
+x, y= maybe_xy ? {}
+
+// Current answer
+// data can be deconstructed (common elements)
+together := multi()
+together.x
+
+x, y := together
+x, y := multi()
+
+// they are values not references
