@@ -3,7 +3,11 @@ project(ATOMICA C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(ATOMICA main.c)
+add_executable(ATOMICA main.c
+        Lexer/Token.c
+        Lexer/Token.h
+        Lexer/Lexer.c
+        Lexer/Lexer.h)
 
 
 add_executable(EXAMPLES_300

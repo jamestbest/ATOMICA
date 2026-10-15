@@ -1,6 +1,8 @@
 #include <stdio.h>
 
+#include "Lexer/Lexer.h"
+
 int main(void) {
-    printf("Hello, World!\n");
+    lex("C:\\Users\\jamescoward\\CLionProjects\\ATOMICA\\atom_examples\\900.atm");
     return 0;
 }
