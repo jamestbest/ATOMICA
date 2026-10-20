@@ -1,0 +1,449 @@
+Buffer :: data {
+    d: >'byte
+    size: n8
+    pos: n8
+}
+
+main :: () : !void {
+    lex("C:\\Users\\jamescoward\\CLionProjects\\ATOMICA\\atom_examples\\900.atm")!
+}
+
+read_file_into_buffer :: (file_path: string, allocator:= ctx.allocator): !Buffer' {
+    buff: Buffer'= {}
+    
+    file: >File= open(file_path, READ)!
+    
+    seek(file, 0, END)? ret! SEEK_ERROR
+    file_size := tell(file)
+    assert(seek(file, 0, START))
+    
+    buff.d= allocator.alloc(file_size + 1)? |err| panic(err)
+    defer! free(buff.d')
+    
+    bytes_read:= read(buff.d, 1, file_size, file)!
+    buff.d[bytes_read]= '\0'
+    
+    buff.size= bytes_read
+    buff.pos= bytes_read
+    
+    ret buff'
+}
+
+buff: Buffer'
+cursor: n8
+
+MAX_TOKENS : n8 : 1000
+tokens: [MAX_TOKENS]Token= undefined
+token_pos: n8= 0
+
+lex :: (file_path: string): !void {
+    buff := read_file_into_buffer(file_path)!
+    
+    cursor= 0
+    
+    while cursor < buff.pos {
+        t := lex_token()? |err| {
+            error("Lexer found error: %", err)
+            ret! LEXER_ERROR
+        }
+        
+        if t? continue
+        
+        tokens[token_pos++]= t
+    }
+    
+    tokens[token_pos++]= {type= EOTS, index= cursor}
+    
+    print_all_tokens()
+} 
+
+get_token_end :: (start: n8): n8 {
+    cursor_save:= cursor
+    
+    cursor= start
+    lex_token()? panic()
+    res:= cursor
+    cursor= cursor_save
+    
+    ret res
+}
+
+create_simple_token :: (token_type: TokenType): Token {
+    ret {type= token_type, index= cursor} 
+}   
+
+lex_token :: () : !Token? {
+    c:= current()
+    
+    res: Token= undefined
+    lexed: bool= true
+    c {
+        case '\0': res= create_simple_token(EOTS) 
+        case '[': res= create_simple_token(LBRACKET) 
+        case ']': res= create_simple_token(RBRACKET) 
+        case '(': res= create_simple_token(LPAREN) 
+        case ')': res= create_simple_token(RPAREN) 
+        case '{': res= create_simple_token(LBRACE) 
+        case '}': res= create_simple_token(RBRACE) 
+
+        case '\'': res= create_simple_token(CARROT) 
+
+        case ':': res= create_simple_token(COLON) 
+        case ',': res= create_simple_token(COMMA) 
+        case '.': res= create_simple_token(DOT) 
+
+        case '!': {
+            if (peek() == '=') {
+                res= create_simple_token(OPERATOR_NEQ)
+                consume()
+            } else res= create_simple_token(EXCLAMATION)
+        }
+        case '?': res= create_simple_token(QUESTION) 
+        case '#': res= create_simple_token(HASH) 
+        case '': res= create_simple_token(DELIMITER) 
+
+        case '=': {
+            if (peek() == '=') {
+                consume()
+                res= create_simple_token(OPERATOR_EQ)
+            } else res= create_simple_token(OPERATOR_ASSIGN)
+        }
+
+        case '*': {
+            // *
+            // *=
+            if (peek() == '=') {
+                res= create_simple_token(OPERATOR_ASSIGN_MULT)
+                consume()
+                break
+            }
+            res= create_simple_token(OPERATOR_MULT)
+        }
+
+        case '+': {
+            if (peek() == '+') {
+                res= create_simple_token(OPERATOR_PLUS_PLUS)
+                consume()
+            } else if (peek() == '=') {
+                res= create_simple_token(OPERATOR_ASSIGN_PLUS)
+                consume()
+            } else {
+                res= create_simple_token(OPERATOR_PLUS)
+            }
+        }
+
+        case '-': {
+            if (peek() == '-') {
+                res= create_simple_token(OPERATOR_MINUS_MINUS)
+                consume()
+            } else if (peek() == '=') {
+                res= create_simple_token(OPERATOR_ASSIGN_SUBTRACT)
+                consume()
+            } else {
+                res= create_simple_token(OPERATOR_SUBTRACT)
+            }
+
+            
+        }
+
+        case '>': {
+            if (peek() == '=') {
+                res= create_simple_token(OPERATOR_MORE_EQ)
+                consume()
+                break
+            }
+            res= create_simple_token(OPERATOR_MORE)
+        }
+
+        case '<': {
+            if (peek() == '=') {
+                res= create_simple_token(OPERATOR_LESS_EQ)
+                consume()
+                break
+            }
+            res= create_simple_token(OPERATOR_LESS)
+        }
+
+        case '\n': res= create_simple_token(DELIMITER) 
+        
+        case '\t': fall
+        case ' ': res= create_simple_token(IGNORE)
+            
+        case _: lexed= false
+    }
+    
+    if lexed {
+        consume()
+        ret res
+    }
+    
+    if c == '/' && peek() == '/' ret lex_comment()
+    if is_alpha(c) ret lex_identifier()
+    if is_numeric(c) ret lex_numeric_literal()!
+    if c == '"' ret lex_string()!
+    
+    printf("Did not match on character '%' v: %.\n", c as byte, c);
+    
+    ret null
+}
+
+lex_comment :: (): Token {
+    consume()
+    consume()
+    
+    res: const= create_simple_token(COMMENT)
+    
+    while current() != '\n' consume()
+    
+    ret res
+}
+
+lex_identifier :: (): Token {
+    start:= cursor
+    start_char:= current()
+    
+    res:= create_simple_token(IDENTIFIER)
+    
+    c: n4
+    while {c= current(); is_alpha_numeric(c) || c == '_'} consume()
+    end := cursor
+    ident_bytes := end - start
+    
+    start_ptr: >byte= >buff.d[start]
+    
+    MATCH_RES: Code(en: TokenType) : ${ res.type= \en; ret en }
+    MATCH_CASE: Code(kw: string, en: TokenType) ${ if (strncmp(start_ptr, \kw, ident_bytes) == 0) MATCH_RES(\en) }
+
+    start_char {
+        case 'b': {
+            MATCH_CASE("break", KEYWORD_BREAK)
+            MATCH_CASE("bool", TYPE_BOOL)
+        }
+        case 'c': {
+            MATCH_CASE("continue", KEYWORD_CONTINUE)
+        }
+        case 'd': {
+            MATCH_CASE("defer", KEYWORD_DEFER)
+            MATCH_CASE("data", KEYWORD_DATA)
+        }
+        case 'e': {
+            MATCH_CASE("else", KEYWORD_ELSE)
+            MATCH_CASE("entry", KEYWORD_ENTRY)
+        }
+        case 'f': {
+            MATCH_CASE("for", KEYWORD_FOR)
+            MATCH_CASE("false", BOOLEAN_FALSE)
+        }
+        case 'i': {
+            MATCH_CASE("if", KEYWORD_IF)
+            (*(start_ptr + 1)) {
+                case '1': MATCH_RES(TYPE_I1)
+                case '2': MATCH_RES(TYPE_I2)
+                case '4': MATCH_RES(TYPE_I4)
+                case '8': MATCH_RES(TYPE_I8)
+                case _: break
+            }
+        }
+        case 'n': {
+            MATCH_CASE("null", NULL)
+            (*(start_ptr + 1)) {
+                case '1': MATCH_RES(TYPE_N1)
+                case '2': MATCH_RES(TYPE_N2)
+                case '4': MATCH_RES(TYPE_N4)
+                case '8': MATCH_RES(TYPE_N8)
+                case _: break
+            }
+        }
+        case 'm': {
+            MATCH_CASE("mark", KEYWORD_MARK)
+        }
+        case 'q': {
+            (*(start_ptr + 1)) {
+                case '2': MATCH_RES(TYPE_I2)
+                case '4': MATCH_RES(TYPE_I4)
+                case '8': MATCH_RES(TYPE_I8)
+                case _: break
+            }
+            MATCH_CASE("q16", TYPE_Q16)
+        }
+        case 'r': {
+            MATCH_CASE("ret", KEYWORD_RET)
+        }
+        case 's': {
+            MATCH_CASE("string", TYPE_STRING)
+        }
+        case 't': {
+            MATCH_CASE("true", BOOLEAN_TRUE)
+        }
+        case 'u': {
+            MATCH_CASE("unmark", KEYWORD_UNMARK)
+        }
+        case 'w': {
+            MATCH_CASE("while", KEYWORD_WHILE)
+            MATCH_CASE("with", KEYWORD_WITH)
+        }
+        case 'y': {
+            MATCH_CASE("yield", KEYWORD_YIELD)
+        }
+        case _: 
+    }
+
+    ret res
+}
+
+lex_string :: (): !Token {
+    res:= create_simple_token(LIT_STRING)
+    consume()
+
+    c: n4
+    while {c= current(); c != '"'} {
+        if (c == '\n') {
+            error("Strings must be on a single line. Thanks\n");
+            ret! INVALID_STRING_LIT
+        }
+
+        consume()
+    }
+
+    consume()
+
+    ret res
+}
+
+import "string"
+
+lex_numeric_literal :: (): !Token {
+    int_end: >?byte= null
+    float_end: >?byte= null
+
+    start: >buff.d[cursor]
+
+    int_res:= strtoll(start, >int_end, 0)!
+    float_res := strtold(start, >float_end)!
+
+    res: Token= undefined
+    if (float_end > int_end) {
+        res= create_simple_token(LIT_FLOAT)
+        cursor += float_end - start
+    } else {
+        res= create_simple_token(LIT_INT);
+        cursor += int_end - start
+    }
+
+    ret res
+}
+
+is_alpha :: (character: n4): bool {
+    ret ((character >= 'a' && character <= 'z') ||
+        (character >= 'A' && character <= 'Z')
+    )
+}
+
+is_numeric :: (character: n4): bool {
+    ret (character >= '0' && character <= '9')
+}
+
+is_alpha_numeric :: (character: const n4): bool {
+    ret is_alpha(character) || is_numeric(character)
+}
+
+print_all_tokens :: (): void {
+    line, col : n4 = 1
+    line_index: n4 = 0
+
+    t_pos: n4= 0
+    while t_pos < token_pos {
+        t: const= tokens[t_pos]
+        t_end : const= get_token_end(t.index)
+
+        is_nl: const= buff.d[t.index] == '\n'
+        if is_nl {
+            line++
+            col= 1
+            line_index= t.index
+        }
+
+        col= t.index - line_index
+
+        print("<TOKEN:% @ %:%> ", TokenType.STRINGS[t.type], line, col);
+
+        if  !is_nl {
+            save: byte= '\0'
+            save <> buff.d[t_end]
+            printf("%", >buff.d[t.index])
+            buff.d[t_end]= end
+        }
+
+        print("\n")
+
+        t_pos++
+    }
+}
+
+read_utf8_character :: (start: n8): data {character: n4; size: n4} {
+    first: n1= buff.d[start]
+
+    if ((first & 0x80) == 0) {
+        // one byte only
+        ret {
+            character= buff.d[start],
+            size= 1
+        };
+    }
+
+    second: n1= buff.d[start + 1];
+    if ((first & 0xE0) == 0xC0) {
+        ret {
+            size= 2,
+            character= (
+                ((first & 0x1f) << 6) |
+                (second & 0x3f)
+            )
+        };
+    }
+
+    third: n1= buff.d[start + 2];
+    if ((first & 0xF0) == 0xE0) {
+        ret {
+            size= 3,
+            character= (
+                ((first & 0x0f) << 12) |
+                ((second & 0x3f) << 6) |
+                ((third & 0x3f))
+            )
+        };
+    }
+
+    forth: n1`= buff.d[start + 3];
+    if ((first & 0xF8) == 0xF0) {
+        ret {
+            size= 4,
+            character= (
+                ((first & 0x07) << 18) |
+                ((second & 0x3f) << 12) |
+                ((third & 0x3f) << 6) |
+                ((forth & 0x3f))
+            )
+        };
+    }
+
+    panic("Invalid utf8 character")
+}
+
+current :: (): n4 {
+    ret read_utf8_character(cursor).character
+}
+
+consume :: (): n4 {
+    character, size : const= read_utf8_character(cursor)
+    cursor += size
+
+    ret character
+}
+
+peek :: (): n4 {
+    res_0 := read_utf8_character(cursor)
+    res_1 := read_utf8_character(cursor + res_0.size)
+
+    ret res_1.character
+}

@@ -1,0 +1,91 @@
+export TokenType :: data {
+    LBRACE,
+    RBRACE,
+    LBRACKET,
+    RBRACKET,
+    LPAREN,
+    RPAREN,
+
+    IDENTIFIER,
+
+    KEYWORD_BREAK,
+    KEYWORD_CONTINUE,
+    KEYWORD_DATA,
+    KEYWORD_DEFER,
+    KEYWORD_ELSE,
+    KEYWORD_ENTRY,
+    KEYWORD_FOR,
+    KEYWORD_IF,
+    KEYWORD_MARK,
+    KEYWORD_RET,
+    KEYWORD_UNMARK,
+    KEYWORD_WHILE,
+    KEYWORD_WITH,
+    KEYWORD_YIELD,
+
+    TYPE_I1,
+    TYPE_I2,
+    TYPE_I4,
+    TYPE_I8,
+
+    TYPE_N1,
+    TYPE_N2,
+    TYPE_N4,
+    TYPE_N8,
+
+    TYPE_Q2,
+    TYPE_Q4,
+    TYPE_Q8,
+    TYPE_Q16,
+
+    TYPE_STRING,
+    TYPE_BOOL,
+
+    BOOLEAN_TRUE,
+    BOOLEAN_FALSE,
+
+    NULL,
+
+    OPERATOR_PLUS, // +
+    OPERATOR_SUBTRACT, // -
+    OPERATOR_MULT, // *
+    OPERATOR_EQ, // ==
+    OPERATOR_NEQ, // !=
+    OPERATOR_LESS, // <
+    OPERATOR_MORE, // >
+    OPERATOR_LESS_EQ, // <=
+    OPERATOR_MORE_EQ, // >=
+
+    OPERATOR_ASSIGN, // =
+
+    OPERATOR_ASSIGN_MULT, // *=
+    OPERATOR_ASSIGN_PLUS, // +=
+    OPERATOR_ASSIGN_SUBTRACT, // -=
+
+
+    OPERATOR_PLUS_PLUS, // ++
+    OPERATOR_MINUS_MINUS, // --
+
+    COLON, // :
+    CARROT, // '
+    COMMA, // ,
+
+    DOT, // .
+    EXCLAMATION, // !
+    QUESTION, // ?
+    HASH, // #
+
+    LIT_INT,
+    LIT_FLOAT,
+    LIT_STRING,
+
+    COMMENT,
+
+    DELIMITER, // ; or nl
+    EOTS,
+}
+
+export Token :: data {
+    type: TokenType.8
+    index: n4.24
+}
