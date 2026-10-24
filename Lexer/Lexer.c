@@ -12,6 +12,8 @@
 
 #include "Token.h"
 
+#include "shared/Array.h"
+
 static uint32_t current();
 static uint32_t consume();
 static uint32_t peek();
@@ -45,10 +47,8 @@ static int read_file_into_buffer(const char* file_path, Buffer* out) {
 static Buffer buff;
 static size_t cursor;
 
-// todo: make Array
-#define MAX_TOKENS 1000
-static Token tokens[MAX_TOKENS];
-static size_t token_pos= 0;
+ARRAY_ADD(Token, Token)
+extern TokenArray tokens;
 
 static Token lex_token();
 static Token lex_comment();
@@ -57,6 +57,8 @@ static Token lex_numeric_literal();
 static void print_all_tokens();
 
 int lex(const char* file_path) {
+    tokens= Token_array_construct(5);
+
     const int res= read_file_into_buffer(file_path, &buff);
     if (res != EXIT_SUCCESS) return res;
 
@@ -70,91 +72,14 @@ int lex(const char* file_path) {
             return EXIT_FAILURE;
         }
 
-        tokens[token_pos++]= t;
+        Token_array_add(&tokens, t);
     }
 
-    tokens[token_pos++]= (Token){.type= TT_EOTS, .index= cursor};
+    Token_array_add(&tokens, (Token){.type= TT_EOTS, .index= cursor});
 
     print_all_tokens();
 
     return EXIT_SUCCESS;
-}
-
-static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
-    [TT_LBRACE]= "LBRACE",
-    [TT_RBRACE]= "RBRACE",
-    [TT_LBRACKET]= "LBRACKET",
-    [TT_RBRACKET]= "RBRACKET",
-    [TT_LPAREN]= "LPAREN",
-    [TT_RPAREN]= "RPAREN",
-    [TT_IDENTIFIER]= "IDENTIFIER",
-    [TT_KEYWORD_BREAK]= "KEYWORD_BREAK",
-    [TT_KEYWORD_CONTINUE]= "KEYWORD_CONTINUE",
-    [TT_KEYWORD_DATA]= "KEYWORD_DATA",
-    [TT_KEYWORD_DEFER]= "KEYWORD_DEFER",
-    [TT_KEYWORD_ELSE]= "KEYWORD_ELSE",
-    [TT_KEYWORD_ENTRY]= "KEYWORD_ENTRY",
-    [TT_KEYWORD_FOR]= "KEYWORD_FOR",
-    [TT_KEYWORD_IF]= "KEYWORD_IF",
-    [TT_KEYWORD_MARK]= "KEYWORD_MARK",
-    [TT_KEYWORD_RET]= "KEYWORD_RET",
-    [TT_KEYWORD_UNMARK]= "KEYWORD_UNMARK",
-    [TT_KEYWORD_WHILE]= "KEYWORD_WHILE",
-    [TT_KEYWORD_WITH]= "KEYWORD_WITH",
-    [TT_KEYWORD_YIELD]= "KEYWORD_YIELD",
-    [TT_TYPE_I1]= "TYPE_I1",
-    [TT_TYPE_I2]= "TYPE_I2",
-    [TT_TYPE_I4]= "TYPE_I4",
-    [TT_TYPE_I8]= "TYPE_I8",
-    [TT_TYPE_N1]= "TYPE_N1",
-    [TT_TYPE_N2]= "TYPE_N2",
-    [TT_TYPE_N4]= "TYPE_N4",
-    [TT_TYPE_N8]= "TYPE_N8",
-    [TT_TYPE_Q2]= "TYPE_Q2",
-    [TT_TYPE_Q4]= "TYPE_Q4",
-    [TT_TYPE_Q8]= "TYPE_Q8",
-    [TT_TYPE_Q16]= "TYPE_Q16",
-    [TT_TYPE_STRING]= "TYPE_STRING",
-    [TT_TYPE_BOOL]= "TYPE_BOOL",
-    [TT_BOOLEAN_TRUE]= "BOOLEAN_TRUE",
-    [TT_BOOLEAN_FALSE]= "BOOLEAN_FALSE",
-    [TT_NULL]= "NULL",
-    [TT_OPERATOR_PLUS]= "OPERATOR_PLUS",
-    [TT_OPERATOR_SUBTRACT]= "OPERATOR_SUBTRACT",
-    [TT_OPERATOR_MULT]= "OPERATOR_MULT",
-    [TT_OPERATOR_EQ]= "OPERATOR_EQ",
-    [TT_OPERATOR_NEQ]= "OPERATOR_NEQ",
-    [TT_OPERATOR_LESS]= "OPERATOR_LESS",
-    [TT_OPERATOR_MORE]= "OPERATOR_MORE",
-    [TT_OPERATOR_LESS_EQ]= "OPERATOR_LESS_EQ",
-    [TT_OPERATOR_MORE_EQ]= "OPERATOR_MORE_EQ",
-    [TT_OPERATOR_ASSIGN]= "OPERATOR_ASSIGN",
-    [TT_OPERATOR_ASSIGN_MULT]= "OPERATOR_ASSIGN_MULT",
-    [TT_OPERATOR_ASSIGN_PLUS]= "OPERATOR_ASSIGN_PLUS",
-    [TT_OPERATOR_ASSIGN_SUBTRACT]= "OPERATOR_ASSIGN_SUBTRACT",
-    [TT_OPERATOR_PLUS_PLUS]= "OPERATOR_PLUS_PLUS",
-    [TT_OPERATOR_MINUS_MINUS]= "OPERATOR_MINUS_MINUS",
-    [TT_COLON]= "COLON",
-    [TT_CARROT]= "CARROT",
-    [TT_COMMA]= "COMMA",
-    [TT_DOT]= "DOT",
-    [TT_EXCLAMATION]= "EXCLAMATION",
-    [TT_QUESTION]= "QUESTION",
-    [TT_HASH]= "HASH",
-    [TT_LIT_INT]= "LIT_INT",
-    [TT_LIT_FLOAT]= "LIT_FLOAT",
-    [TT_LIT_STRING]= "LIT_STRING",
-    [TT_COMMENT]= "COMMENT",
-    [TT_DELIMITER]= "DELIMITER",
-    [TT_EOTS]= "EOTS",
-    [TT_IGNORE]= "IGNORE",
-    [TT_ERROR]= "ERROR",
-};
-
-static const char* token_type_string(const TokenType type) {
-    if (type > TT_COUNT) return "<<UNKNOWN TYPE>>";
-
-    return TOKEN_TYPE_STRINGS[type];
 }
 
 static size_t get_token_end(size_t start) {
@@ -168,14 +93,21 @@ static size_t get_token_end(size_t start) {
     return res;
 }
 
+inline uint8_t* get_token_end_ptr(const Token t) {
+    return &buff.data[get_token_end(t.index)];
+}
+
+inline uint8_t* get_token_start_ptr(const Token t) {
+    return &buff.data[t.index];
+}
+
 static void print_all_tokens() {
     size_t line= 1, col= 1;
     size_t line_index= 0;
 
     size_t t_pos= 0;
-    while (t_pos < token_pos) {
-        const Token t= tokens[t_pos];
-        const size_t t_end= get_token_end(t.index);
+    while (t_pos < tokens.pos) {
+        const Token t= Token_array_get(&tokens, t_pos);
 
         bool is_nl= buff.data[t.index] == '\n';
         if (is_nl) {
@@ -185,14 +117,7 @@ static void print_all_tokens() {
         }
         col= t.index - line_index;
 
-        printf("<TOKEN:%s @ %zu:%zu> ", token_type_string(t.type), line, col);
-
-        if (!is_nl) {
-            uint8_t save= buff.data[t_end];
-            buff.data[t_end]= '\0';
-            printf("%s", (const char*)&buff.data[t.index]);
-            buff.data[t_end]= save;
-        }
+        print_token(t, line, col);
         printf("\n");
 
         t_pos++;
@@ -223,6 +148,7 @@ Token lex_token() {
 
         case ':': res= create_simple_token(TT_COLON); break;
         case ',': res= create_simple_token(TT_COMMA); break;
+        case '~': res= create_simple_token(TT_TILDA); break;
         case '.': res= create_simple_token(TT_DOT); break;
 
         case '!': {
@@ -402,6 +328,7 @@ static Token lex_identifier() {
         }
         case 'i': {
             MATCH_CASE("if", TT_KEYWORD_IF)
+            MATCH_CASE("import", TT_KEYWORD_IMPORT)
             switch (*(start_ptr + 1)) {
                 case '1': MATCH_RES(TT_TYPE_I1)
                 case '2': MATCH_RES(TT_TYPE_I2)

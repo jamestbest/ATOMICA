@@ -3,11 +3,22 @@ project(ATOMICA C)
 
 set(CMAKE_C_STANDARD 99)
 
+include_directories(
+    .
+)
+
 add_executable(ATOMICA main.c
         Lexer/Token.c
         Lexer/Token.h
         Lexer/Lexer.c
-        Lexer/Lexer.h)
+        Lexer/Lexer.h
+        shared/Array.c
+        shared/Array.h
+        Parser/Parser.c
+        Parser/Parser.h
+        shared/Math.h
+        Parser/Parserr/Parserr.c
+        Parser/Parserr/Parserr.h)
 
 
 add_executable(EXAMPLES_300

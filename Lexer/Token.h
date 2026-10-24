@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#include "shared/Array.h"
+
+
 typedef enum {
     TT_LBRACE,
     TT_RBRACE,
@@ -25,6 +28,7 @@ typedef enum {
     TT_KEYWORD_ENTRY,
     TT_KEYWORD_FOR,
     TT_KEYWORD_IF,
+    TT_KEYWORD_IMPORT,
     TT_KEYWORD_MARK,
     TT_KEYWORD_RET,
     TT_KEYWORD_UNMARK,
@@ -32,6 +36,7 @@ typedef enum {
     TT_KEYWORD_WITH,
     TT_KEYWORD_YIELD,
 
+    TT_INTERNAL_TYPE_START,
     TT_TYPE_I1,
     TT_TYPE_I2,
     TT_TYPE_I4,
@@ -49,6 +54,7 @@ typedef enum {
 
     TT_TYPE_STRING,
     TT_TYPE_BOOL,
+    TT_INTERNAL_TYPE_END,
 
     TT_BOOLEAN_TRUE,
     TT_BOOLEAN_FALSE,
@@ -78,6 +84,7 @@ typedef enum {
     TT_COLON, // :
     TT_CARROT, // '
     TT_COMMA, // ,
+    TT_TILDA, // ~
 
     TT_DOT, // .
     TT_EXCLAMATION, // !
@@ -104,6 +111,9 @@ typedef struct {
     uint32_t index: 24;
 } Token;
 
+ARRAY_PROTO(Token, Token)
 
+const char* token_type_string(TokenType type);
+void print_token(Token t, size_t line, size_t col);
 
 #endif //ATOMICA_TOKEN_H
