@@ -1,0 +1,151 @@
+// compile time execution
+//  compiling code to bytecode that is executed by a VM - JAI
+//  compile as separate object and create dll, then load and call
+//      - faster execution, perhaps slower build time (both generate IR)
+//      - has to be separated somehow, rust has another crate
+// avoid function colouring, don't want a difference between runtime and comptime
+
+
+// writing code that writes code
+// Generating TYPES
+//  Generics on data
+X :: data(T: Type, default: i4) {
+    payload: [..]T
+    default_value: i4= default
+}
+
+// Generating CODE
+
+// generics on functions
+my_function :: (a: >$T, b: T) : void {
+    a. += b
+}
+// inline tells the compiler from which value to get the type
+//  this could probably make for nicer error messages? slightly?
+
+x: i4= 10
+y: i4= 12
+my_function(>x, y)
+my_function(>x, x)
+
+x: r4= 10.0
+y: r4= 12.0
+my_function(>x, y)
+
+// some kind of structure for code
+//  strings can be very powerful, but annoying to use
+//  with lots of string builder boilerplate
+
+// c++ version
+// C++ Reflection Is Not Contemplation - Andrei Alexandrescu - CppCon 2024
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3294r2.html#string-injection
+consteval create_type :: (name: string, elements: []string, element_type: Type): Type {
+    ret queue_injection(^^{
+        \id(name) :: data {
+            consteval {
+                for elem: elements {
+                    queue_injection(^^{ \id(elem): [:\(element_type):]= 0 })
+                }
+            }
+        }
+    })
+}
+
+#run create_type("my_type", ["x", "y", "z"], i4)
+#run create_type(^^my_type, [^^x, ^^y, ^^z], i4)
+
+consteval create_type :: (name: string, elements: []string, element_type: Type): Type {
+    vector<info> elem_tokens;
+    for elem: elements {
+        elem_tokens.add(^^{ \id(elem): \(element_type)= 0; })
+    }
+
+    ret ^^{
+        \id(name) :: data {
+            \tokens(elem_tokens)
+        }
+    }
+}
+
+#run [: create_type("my_type", ["x", "y", "z"], i4) :]
+
+create_type :: (name: string, elements: []string, element_type: Type): Type {
+    ret #insert ${
+        \name :: data {
+            \{
+                for elem: elements {
+                    #insert ${ \elem: \element_type= 0; }
+                }
+            }
+        }
+    }
+}
+
+#insert create_type("my_type", ["x", "y", "z"], r4)
+// my_type :: data {
+//   x: r4= 0;
+//   y: r4= 0;
+//   z: r4= 0;
+// }
+
+create_type :: (name: string, elements: []string, element_type: Type): Code {
+    fields: [..]Code= []
+
+    for elem: elements {
+        fields += ${ \elem: \element_type= 0 }
+    }
+
+    ret ${
+        \name :: data {
+            \fields
+        }
+    }
+}
+
+#insert create_type("my_type", ["x", "y", "z"], r4)
+
+create_type :: (name: string, elements: []string, element_type: Type): string {
+    out : string= $"{name} :: data {\n"
+    for elem: elements {
+        out += $"   {elem}: {element_type}= 0\n"
+    }
+    out += "}\n"
+
+    ret out
+}
+
+#insert create_type("my_type", ["x", "y", "z"], r4)
+
+create_type :: (name: string, elements: []string, element_type: Type): string {
+    sb: StringBuilder= {}
+    add(>sb, "% :: data {\n", name)
+    for elem: elements {
+        add(>sb, "    %: %= 0\n", elem, element_type)
+    }
+    add(>sb, "}\n")
+
+    ret get(>sb)
+}
+
+#insert create_type("my_type", ["x", "y", "z"], r4)
+
+
+// Generating DATA
+// reading information in some kind of data format and creating
+//  inline data from it
+// this require being able to open files, read data (probably heap allocate)
+//  etc. everything you can do at runtime should be comptime available
+read_config :: () : !void {
+    file_path: string= "my_dataformat.mdf"
+    file: >File= open(file_path)!
+
+    for line: read_lines(file)! {
+        tokens: []Token= tokenise_line(line)? |in| {
+            print("Failed to tokenise line: %", line)
+            ret! in
+        }
+    }
+}
+
+
+

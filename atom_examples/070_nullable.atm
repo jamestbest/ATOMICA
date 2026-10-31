@@ -1,0 +1,55 @@
+Option :: data(T: Type) {
+    Some(T)
+    None
+}
+
+entry main :: () : i4 {
+    f1: >?File= open_nullable("/etc/passwd", WRITE)
+    f1= f1? open_cant_fail("/etc/passwd", READ)
+    // f1's type is now just >File
+    defer close(f1)
+
+    f2: >?File= open_my_favourite_file()
+    defer close(f2) // would be error at this point
+    // but defer goes down
+
+    if (f2?) ret -1
+
+    // now f2 is a >File
+    // non nullables can be implicitly wrapped into nullables
+    // i.e. >File -> >?File
+    // but not the other way round
+
+    ret 0
+}
+
+open_my_favourite_file :: () : >?File {
+    f: >File= open_nullable("/etc/passwd", WRITE)!
+    // if this is null then it will return null
+    f.write("I love this file")
+    f.write("I love writing to this file")
+
+    ret f
+}
+
+// there is no cost to making a pointer type null
+// however other types e.g. i4, datas, floats etc
+//  they require extra information stored with them
+
+// for loops and whiles return nullable values
+x := while x {
+    if ... continue
+
+    break 1
+}
+// x would be i4?, as x may be false and so the while loop doesn't run
+// could also be null if the continue leads to the expr being false before
+//  breaking a value
+
+x := for x {
+    if ... break 10
+}
+
+// alternative as returning last expression
+sum := 0
+ret for x:xs { sum+=x }

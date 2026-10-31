@@ -1,0 +1,58 @@
+// group borrowing
+// https://verdagon.dev/blog/group-borrowing
+
+// about invalidating child groups when data (pointers, enums) are changed
+xs: [..]i4= []
+a : >i4 = xs.add(1)
+xs.add(2)
+// a is now invalid
+// why... because xs.data may have been realloc'ed to increase the capacity for .add(2)
+// so when xs.data= realloc(xs.data', new_size)
+//  all elements in xs.data's subgroup should become invalid
+// this is >xs.data[0], >xs.data[1], ..., etc, >xs.data[n]
+
+// so what is a group
+// a group is something that can be destroyed independently
+// xs is
+// {
+//    data: >'i4
+//    pos: n4
+// }
+// the first group is xs, xs.data, and xs.pos
+//  as none of these can be destroyed independently, they are all values
+// the second group is xs.data[n], all of these elements can be destroyed
+//  by e.g. realloc, free
+// xs.data owns group two, it's modification invalidates group two,
+//  the modification of pos does not
+//                   xs
+//      data                    pos
+//  data[0] data[1]
+
+xs: [*]i4
+
+x1:= xs.add(1)
+x2:= xs.add(2)
+// x1 is still valid, and will be as long as xs lives
+//  because it's a dynamic link pointer, the memory is not realloc'ed it's added to a list
+
+MyData :: data {...}
+
+Arena :: data(T: Type) {
+  total_cap: i4
+  entrys: [..]ArenaEntry(T)
+}
+
+ArenaEntry :: data(T: Type) {
+  pos: i4
+  data: >'T
+}
+
+a: Arena(MyData)= {}
+
+// g1: a, a.total_cap, a.entrys, a.entrys.data, a.entrys.pos
+// g2: a.entrys[n], a.entrys[n].pos, a.entrys[n].data
+// g3: a.entrys[n].data[m]
+
+x:= a.add({...}) // x is >a.entrys[0].data[0], so group 3
+a.add({...})
+invalidates g2, but not g3?, so x is still valid

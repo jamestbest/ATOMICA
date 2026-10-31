@@ -1,0 +1,80 @@
+[
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/main.c.o -c /home/jamestbest/ATOMICA/main.c",
+  "file": "/home/jamestbest/ATOMICA/main.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/main.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Lexer/Token.c.o -c /home/jamestbest/ATOMICA/Lexer/Token.c",
+  "file": "/home/jamestbest/ATOMICA/Lexer/Token.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Lexer/Token.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Lexer/Lexer.c.o -c /home/jamestbest/ATOMICA/Lexer/Lexer.c",
+  "file": "/home/jamestbest/ATOMICA/Lexer/Lexer.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Lexer/Lexer.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/shared/Array.c.o -c /home/jamestbest/ATOMICA/shared/Array.c",
+  "file": "/home/jamestbest/ATOMICA/shared/Array.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/shared/Array.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Parser/Parser.c.o -c /home/jamestbest/ATOMICA/Parser/Parser.c",
+  "file": "/home/jamestbest/ATOMICA/Parser/Parser.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Parser/Parser.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Parser/Parserr/Parserr.c.o -c /home/jamestbest/ATOMICA/Parser/Parserr/Parserr.c",
+  "file": "/home/jamestbest/ATOMICA/Parser/Parserr/Parserr.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Parser/Parserr/Parserr.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Parser/Shunt/ShuntingYard.c.o -c /home/jamestbest/ATOMICA/Parser/Shunt/ShuntingYard.c",
+  "file": "/home/jamestbest/ATOMICA/Parser/Shunt/ShuntingYard.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Parser/Shunt/ShuntingYard.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/shared/String.c.o -c /home/jamestbest/ATOMICA/shared/String.c",
+  "file": "/home/jamestbest/ATOMICA/shared/String.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/shared/String.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Parser/Node.c.o -c /home/jamestbest/ATOMICA/Parser/Node.c",
+  "file": "/home/jamestbest/ATOMICA/Parser/Node.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Parser/Node.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/ATOMICA.dir/Error.c.o -c /home/jamestbest/ATOMICA/Error.c",
+  "file": "/home/jamestbest/ATOMICA/Error.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir/Error.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/EXAMPLES_300.dir/atom_examples/300_global_static_scope/Lexer.c.o -c /home/jamestbest/ATOMICA/atom_examples/300_global_static_scope/Lexer.c",
+  "file": "/home/jamestbest/ATOMICA/atom_examples/300_global_static_scope/Lexer.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/EXAMPLES_300.dir/atom_examples/300_global_static_scope/Lexer.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/EXAMPLES_300.dir/atom_examples/300_global_static_scope/Parser.c.o -c /home/jamestbest/ATOMICA/atom_examples/300_global_static_scope/Parser.c",
+  "file": "/home/jamestbest/ATOMICA/atom_examples/300_global_static_scope/Parser.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/EXAMPLES_300.dir/atom_examples/300_global_static_scope/Parser.c.o"
+},
+{
+  "directory": "/home/jamestbest/ATOMICA/cmake-build-debug",
+  "command": "/usr/bin/cc -I/home/jamestbest/ATOMICA/. -g -std=gnu99 -fdiagnostics-color=always -fsanitize=undefined -o CMakeFiles/EXAMPLES_300.dir/atom_examples/300_global_static_scope/main.c.o -c /home/jamestbest/ATOMICA/atom_examples/300_global_static_scope/main.c",
+  "file": "/home/jamestbest/ATOMICA/atom_examples/300_global_static_scope/main.c",
+  "output": "/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/EXAMPLES_300.dir/atom_examples/300_global_static_scope/main.c.o"
+}
+]

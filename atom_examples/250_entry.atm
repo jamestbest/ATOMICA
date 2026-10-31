@@ -1,0 +1,15 @@
+entry my_func :: () : i4 {
+
+}
+
+entry my_other_func :: () : i4 {
+
+}
+
+// ./atomica <path> -e my_func
+
+// They must have either signatures
+//  () : i4
+//  (argc: i4, argv: []string): i4
+
+// () : !void

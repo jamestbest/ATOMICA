@@ -1,0 +1,55 @@
+ExitCodes :: data {
+    pos: Position
+
+    EXIT_SUCCESS= 0
+    EXIT_FAILURE= 1
+}
+
+test :: 1 + -2 + x++ - -(--x) + x?y + x?
+
+entry main :: (argc: i4, argv: []string): i4 {
+    if argc != 3 {
+        print_usage();
+        ret EXIT_FAILURE
+    }
+
+    filename: string= argv[1]
+    output_folder:= argv[2]
+
+    file := open(filename)!
+    defer close(file')
+
+    // files is marked, [..]'string
+    files := get_files_in_folder(output_folder)
+    defer free(files')
+    for f: files {
+        print("Folder contains: %", f)
+    }
+
+    ret EXIT_SUCCESS
+}
+
+print_usage :: () {
+    print("./out <filename> <output_folder>\n")
+}
+
+open :: (filename: string): !>'File {
+    if ... ret! NOT_FOUND(filename)
+
+    if ... ret! PERMISSION_DENIED
+
+    ret file_out'
+}
+
+close :: (file: >'File) {
+    ...
+    unmark file'
+}
+
+get_files_in_folder :: (folder: string): [..]'string {
+    out: [..]'string= []
+
+    ...
+
+    ret out'
+}

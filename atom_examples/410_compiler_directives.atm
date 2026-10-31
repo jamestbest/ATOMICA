@@ -1,0 +1,23 @@
+// using #
+
+
+// stolen from jai, I think it's very cool
+#check_func <target_func> <func_to_run>
+
+printf :: (format: string, ...)
+check_printf :: (argc: n2, arg_types: []Type, arg_values: []Any)
+
+// something like check_type? or check_var?
+// or the compiler messages
+
+
+#hotcall
+// giving some information to the compiler that this call is in a hot path
+//  and so could be optimised in some way e.g. inlining
+
+// this information would also be interesting to get from a runtime test
+
+// like #run if x { #insert print("WOW") }
+#if x {
+    print("WOW")
+}

@@ -1,0 +1,189 @@
+// separation of data in design not at runtime, i.e. reduce branching
+
+Entry :: data {
+    a: i4
+    node: >?Node
+}
+entry_pool: [~]Entry= {}
+// {
+//    as: []i4
+//    nodes: []>?Node
+// } // soa
+
+e: ~Entry = entry_pool.add({.a= 12, .node= null})
+// {
+//   >entry_pool
+//   pos
+// }
+// can the compiler track where this index is from
+// if it can then you don't need
+//  >entry_pool, otherwise for heterogeneous entries you do
+
+entries: [..]~Entry= []
+// >entry_pool
+// {
+//   pos,
+//   pos,
+//   ...
+// }
+// same for arrays
+
+entries.add(entry_pool.add({.a= 00, .node= null}))
+entries.add(entry_pool.add({.a= 10, .node= null}))
+entries.add(entry_pool.add({.a= 20, .node= null}))
+entries.add(entry_pool.add({.a= 30, .node= null}))
+
+entry_pool.get(entries.get(2)) // {20, null} // the STRUCT version
+entries.get(2).a= 100
+x : ~Entry = entries.get(2)
+x.a= 200
+x.node= null
+// these change the value in the pool
+
+pos_pool : [~] data {
+    file: string
+    line: n4
+    col: n4
+} = {}
+
+// version tied to the variable
+Position :: ~pos_pool
+pos: Position = {} // automatically added to the pool, returns a handle
+pos.file= "main.c"
+pos.line= 12
+pos.col= 13
+
+token_pool: [~]data {
+    Ident(string)
+    LitInt(n8)
+    LitFloat(r8)
+    LParen
+    RParen
+}= {}
+
+Token :: ~token_pool
+t1: Token= Ident("x")
+t2: Token= LitInt(12)
+t3: Token= LParen
+t4: Token= Ident("y")
+
+Node :: data {
+    type: i1
+    ident: string
+}
+
+BinOp :: data {
+    PLUS
+    MINUS
+}
+
+nodes : [..]Node= []
+node : ~Node= nodes.view(3)
+node.ident= "Hello world" // turning the idx into a usable object
+
+Expr :: data {
+    LitInt(n8)
+    BinExpr(left: ~Expr, right: ~Expr, bin_op: BinOp)
+    FuncCall
+}
+expr_pool : [~]Expr = {}
+ExprV :: ~expr_pool
+ExprI :: ~Expr
+
+l1:   ~Expr      = expr_pool.add(LitInt(12))            // {>expr_pool, tag:idx}
+l2:   ~expr_pool = LitInt(14)                           // {tag:idx}
+expr: ExprV      = BinExpr(l1, l2, PLUS)                // {tag:idx}
+//expr: ExprV      = BinExpr(LitInt(12), LitInt(14), PLUS)// {tag:idx}
+func:= expr_pool.add(FuncCall)
+// expr_pool {
+//    [12, 14]
+//    [{0:0,0:1,0}]
+//    []    // doesn't exist
+// }
+// expr {<tag>:<idx>} {1:0}
+// func {2, 0}
+// could be 8 bits for tag, 24 for idx
+
+// how to layout the pool, arrays for each, or contiguous with gaps
+// { 12, 14, ..., 0,1,0,...,}
+
+// for order of addition could have []tags on side
+// e.g. for above
+// [0,0,1,2] // litInt, litInt, binExpr, funcCall
+
+// removal requires some though
+// could have another field which is the generation along with the ordered tags,
+//  and in the pointer
+// ordered removal would invalidate all indexes above
+// unordered with generational would invalidate the swapped and removed one
+
+
+// an attempt to allow changing from views to pointers
+//  so you can actually measure which is better
+
+expr_pool : [~]Expr = {}
+ExprI :: ~expr_pool
+
+l1:   ExprI      = LitInt(12)            // {tag:idx}
+l2:   ExprI      = LitInt(14)            // {tag:idx}
+expr: ExprI      = BinExpr(l1, l2, PLUS) // {tag:idx}
+
+expr_pool: [..]Expr= {}
+ExprI :: >expr_pool
+
+l1:   ExprI      = LitInt(12)             // >expr_pool[0]
+l2:   ExprI      = LitInt(14)             // >expr_pool[1]
+expr: ExprI      = BinExpr(l1, l2, PLUS)  // >expr_pool[2]
+
+
+// padding on each element in the array to max element size + tag
+
+// minimising size
+//  & allowing flags in tag
+// there are many areas to include tags in existing data
+x :: data {
+    d: >i8
+
+    VERSION_0
+    VERSION_1
+    VERSION_2
+    VERSION_3
+}
+// 4 options requires 2 bits
+// if pointers are aligned to 8 bytes then lower 3 bits are free
+// aligned to 4 bytes then 2
+
+// nullables usually require an extra tag or data stored *somewhere*
+// but pointers can use zero
+// could there be a mechanism to give up parts of variables
+
+
+// storing booleans in the tag
+x :: data {
+    d: >i8
+    c: i4
+    b: i2
+    f0: bool
+    f1: bool
+    f2: bool
+
+    VERSION_0
+    VERSION_1
+    VERSION_2
+    VERSION_3
+}
+// The tag could be 8 bits at a min, but only requires 2 of them
+// so we can stick the f0-2 in the tag as bit fields
+
+// should this be explicit?
+f0: bit
+f0: 1 bit
+f0: bool: 1
+
+x :: ... {
+    tag {
+        f0: bool
+        f1: bool
+        f2: bool
+    }
+}

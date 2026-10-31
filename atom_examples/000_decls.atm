@@ -1,0 +1,62 @@
+entry main :: (argc: i4, argv: []string) : i4 {
+    x: i4 = 4
+    x= 8
+
+    x:= 4
+    x= 8
+
+    x : n8 : 4
+    x= 8
+
+    x :: 4
+    x= 8
+
+    x: r4: 12.1
+
+    x: string= "Hello, world!"
+    // data & size
+
+    x :: (foo: string, bar: i4): void {}
+}
+
+MyStruct :: data {
+    my_elem: n8
+    another_elem: r4
+}
+
+my_struct : MyStruct= {}
+
+my_enum :: data {
+    X
+    Y(string)
+    Z(s: string, bytes: >byte)
+}
+
+MyData :: data {
+    pos: Position
+
+    X
+    Y(string)
+    Z(s: string, bytes: >byte)
+}
+
+xs: [3]i4= [1,2,3]
+xs[0]= 12
+
+ys: [..]i4= []
+ys.add(12)
+ys.add(1)
+
+// here [*] acts like an arena
+zs : [*]i4= []
+zs.add(12)
+z: >i4= >zs[0]
+zs.add(1)
+// z cannot be dangling
+//  unlike in ys
+y: >i4= >ys[0]
+ys.add(0)
+// y could be dangling
+
+ws: [~]
+// for later #REF(200)

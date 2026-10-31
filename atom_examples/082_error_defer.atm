@@ -1,0 +1,11 @@
+// similar to how returning an error is ret!
+// defer can be defer! to trigger when we exit with an error
+
+entry main :: () : !i4 {
+    defer! print("main failed to work properly... :(\n")
+    x := my_failing_func()!
+}
+
+ret     ->  ret!    // return an error value from the function
+yield   ->  yield!  // return an error value from the scope
+defer   ->  defer!  // defer a statement until the function returns an error

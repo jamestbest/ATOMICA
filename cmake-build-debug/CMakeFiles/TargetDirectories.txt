@@ -1,0 +1,4 @@
+/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/ATOMICA.dir
+/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/EXAMPLES_300.dir
+/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/jamestbest/ATOMICA/cmake-build-debug/CMakeFiles/rebuild_cache.dir

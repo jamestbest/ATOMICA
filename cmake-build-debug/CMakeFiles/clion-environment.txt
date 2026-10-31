@@ -1,0 +1,4 @@
+ToolSet: 1.0 (local)Ninja: 1.13.2@/home/jamestbest/.cache/JetBrains/RemoteDev/dist/4ccbadfc52e3c_CLion-2026.1/bin/ninja/linux/x64/ninja
+Options: 
+
+Options:-DCMAKE_MAKE_PROGRAM=/home/jamestbest/.cache/JetBrains/RemoteDev/dist/4ccbadfc52e3c_CLion-2026.1/bin/ninja/linux/x64/ninja

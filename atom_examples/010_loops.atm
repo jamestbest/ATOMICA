@@ -1,0 +1,61 @@
+while <expr> <stmt>
+while 1 {
+    print("WOW")
+}
+
+do {
+    print("WOW")
+} while true
+
+xs := [1,2,3]
+for <elem> : <array> (with <ident>) <stmt>
+
+for x:xs print(": %\n", x)
+// : 1
+// : 2
+// : 3
+
+for x: xs with i {
+    print("[%]: %\n", i, x)
+}
+// [0]: 1
+// [1]: 2
+// [2]: 3
+
+for x: xs with i {
+    if i % 2 == 1 continue
+
+    print("[%]  : %\n", i, x)
+}
+// [0]: 1
+// [2]: 3
+
+x:= 10
+for i: x {
+    print("%: WOW\n", i)
+}
+// eq. to times x {}
+// 0: WOW
+// 1: WOW
+// ...
+// 9: WOW
+
+for x print("WOW\n")
+// prints 10 'WOW's
+
+for x: i4= 0; x < 10; x++ {
+    for ; x < 5; x++ {
+        print("WOW\n")
+    }
+    print("%\n", x)
+}
+// WOW
+// WOW
+// WOW
+// WOW
+// WOW
+// 5
+// 6
+// 7
+// 8
+// 9

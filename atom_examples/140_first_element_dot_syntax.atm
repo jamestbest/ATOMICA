@@ -1,0 +1,15 @@
+add :: (arr: >[..]i4, elem: i4) {
+
+}
+
+arr: [..]= []
+
+add(>arr, 0)
+arr.add(1)
+arr.add(2)
+
+buff: Buffer'= buffer_create()
+buff.destroy() // error
+buff'.destroy() // WOW
+
+destroy :: (buff: Buffer') : void {}

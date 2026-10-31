@@ -1,0 +1,108 @@
+// C VERSION
+typedef struct Position {
+    int col_s, col_d;
+    int line_s, line_d;
+} Position;
+
+// ATOM version
+Position :: data {
+    col_s, col_d : i4
+    line_s, line_d: i4
+}
+
+// C VERSION
+typedef enum MyTaggedUnionType {
+    MTUT_INT,
+    MTUT_FLOAT,
+    MTUT_MY_STRUCT
+} MyTUType
+
+typedef struct MyTaggedUnion {
+    MyTUType type;
+    union {
+        int d_integer;
+        float d_float;
+        struct {
+            int x;
+            int y;
+            int z;
+        } d_struct;
+    }
+} MyTU
+
+// ATOM VERSION
+MyTU :: data {
+    D_INTEGER(i4)
+    D_FLOAT(r4)
+    D_STRUCT(x, y, z: i4)
+}
+
+Position :: data { ... }
+Type :: data { ... }
+
+// C VERSION
+typedef struct Token {
+    Position pos;
+    Tag tag;
+
+    union {
+        char* ident;
+        long lit_int;
+        ...
+        uint index;
+    }
+} Token
+
+// ATOM VERSION
+Token :: data {
+    pos: Position
+
+    Ident(string)
+    LitInt(i8)
+    LitNatural(n8)
+    LitReal(value: r8, precision: n4) // data {value: r8, precision: n4}
+    LitType(Type)
+    Index(n4)
+}
+
+entry main :: () : i4 {
+    tok: Token= consume()
+    res := switch (tok) {
+        // the data types are available here because of switch(tok)
+        case Ident s: 0
+
+        case LitInt n if n > 10: n
+        // or?
+        case LitInt n: {
+            if n > 10 n
+            else continue
+        }
+
+        case LitReal(value, precision) r: {
+            print("% % % %", value, precision, r.value, r.precision)
+        }
+
+        case LitInt n: fall
+        case LitNatural n: n + 1
+        // fall is copy flow
+        //  should be ok because of no goto?
+
+        case LitType t: tok.pos.line_s
+        case Index n: n << 1
+    }
+
+    print("The value is %, wow", res)
+
+    ret res
+}
+
+MyData :: data {
+    x: i4= 0
+    y: i8= -1
+    is_cool: bool= true
+}
+
+my_data: MyData= {}
+// {0, -1, true}
+my_data: MyData= {is_cool= false}
+// {0, -1, false}

@@ -1,0 +1,29 @@
+entry main :: (argc: i4, argv: []string) : i4 {
+    arena: Arena= create(1000 * byte) // use ctx.allocator as base?
+
+    parse_json(argv[1], allocator= arena.allocator)
+    parse_json(argv[1]) // use ctx.allocator?
+
+    buff: [1000]byte= undefined
+    array_allocator: ArrayAllocator= create(buff, sizeof(buff))
+    parse_json(argv[1], allocator= array_allocator.allocator)
+
+    // maybe?
+    my_data : [10]i4 = allocator.alloc()
+    alloc :: (bytes: i4= sizeof(T)) : $T
+
+    #check_func alloc check_alloc
+    check_alloc :: (...) : bool {
+        if args.bytes.is_default && return.type.is_pointer {
+            warning("Usage of default bytes when allocation result is a pointer\n"
+            "Consider making result type an array or explicitly passing bytes in alloc call")
+        }
+    }
+    my_data: >i4= allocator.alloc() // this is the warning
+    my_data: >i4= allocator.alloc(10 * i4)
+
+    // using seems very similar to import
+    // get all the scoped items and make them accessible here
+    using allocator
+    my_data: >i4= alloc(10 * i4)
+}

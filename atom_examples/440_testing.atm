@@ -1,0 +1,20 @@
+// there are a number of ways
+// zig has the 'test' block, which is ignored by the compiler during
+//  normal builds
+// but executed during testing
+
+// annotations could be placed on functions you want to test
+@test
+my_func :: () : bool {
+    if my_other_func()? {
+        ret false
+    }
+
+    ret true
+}
+
+// or like zig some keyword, or potentially a directive
+test {
+    if my_other_func()? { ret false }
+    ret true
+}

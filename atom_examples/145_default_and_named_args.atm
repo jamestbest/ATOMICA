@@ -1,0 +1,13 @@
+open :: (loc: string, access_type: FileAccessType= READWRITE): FileErrors!>File {
+
+}
+
+open("/etc/passwd")
+open("/etc/passwd", READ)
+open("/etc/passwd", access_type= READWRITE)
+
+// The compiler could create a version of the function where the arguments
+// are constants in the code
+// or it could change the canonical version**, depending on exports
+
+// or it could insert them at the call site

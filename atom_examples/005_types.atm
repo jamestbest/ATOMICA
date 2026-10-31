@@ -1,0 +1,31 @@
+// integers (int), the number is the number of bytes
+x: i1
+x: i2
+x: i4
+x: i8
+
+// naturals (uint)
+x: n1/n2/n4/n8
+
+// reals (floats)
+x: r4
+x: r8
+
+// rationals
+x: q4
+x: q8
+x: q16
+
+// qualifiers
+// const,
+//  :: represents something that is compile time constant and known
+// e.g. functions, #defines in C, etc.
+// const as a qualifier is runtime constant
+x :: 1
+// cannot change x at any point
+x : const i4 = get_user_input()
+// cannot change x e.g. x= 2 // error
+x : >const Node = get_my_favourite_node()
+// cannot change the node it points to, but can change x e.g. x= get_my_other_favourite_node()
+x : const >const Node = get_my_favourite_node()
+// cannot change x and cannot change the node it points too

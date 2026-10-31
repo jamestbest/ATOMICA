@@ -1,0 +1,16 @@
+// being able to tag something with more information
+// these can be used by the compiler or userland
+
+@my_annotation
+my_func :: () : void {
+
+}
+
+// having some runtime code that gets these annotation and does some check
+//  or insertion of code etc.
+
+// same for variables, expressions etc.
+// it seems reasonable for most things to be annotationable
+@my_annotation x: i4
+// you might want to be notified when annotated things are declared
+//  and used

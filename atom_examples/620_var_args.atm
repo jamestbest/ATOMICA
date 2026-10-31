@@ -1,0 +1,23 @@
+// I don't know how to do these yet
+
+// C has the unsafe stack method
+// jai keeps type information for the Any type which is a pointer to the type information
+//  and a pointer to the data (?) and then can read this information at runtime
+
+// it seems to me that it'd be nice for these to be processed in some way at comptime
+//  e.g. what rust does
+// []string, []{value, display_func}?
+// this is a macro, so each vararg would have to have some impl of this
+
+// for var args of same type could just use a slice
+//  my_func :: (strs: []string) : void
+// my_func(["a", "b", "c"])
+
+// or have a special type of var args
+//  my_func :: (strs: ...string) : void
+// my_func("a", "b", "c")
+// would have strs be an array under the hood probably
+
+// would require closures, and may make making a concurrency safe print difficult
+name := "BOB"
+print("Hello %f!", (): void { print_name(name) })

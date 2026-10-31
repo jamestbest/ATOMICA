@@ -1,0 +1,91 @@
+// marking resources with a 'responsibility' to clean up the resource
+//  either by passing that responsibility or explicitly unmarking the resource
+
+// very similar to linear types
+
+// no-frees; something has to handle the ownership at the end of their scope
+// double-frees; the resource is invalid after passing it's ownership down
+// use-after-free (of the object); freed resource used
+
+
+// malloc :: (size: n4): >'void
+{
+    x: >'i4= malloc(10 * i4)
+    print(x[1]) // fine
+    my_func(x)  // fine
+
+    a := x      // fine; not in rust
+    print(x)    // fine
+    free(x')
+
+    print(x)    // error
+    print(x[1]) // error
+    print(a)    // ? - this will be tracked by #REF(101), group borrowing, so error
+}
+
+
+// anything can be marked
+// but another example is >'File
+{
+    f: >'File= open("/etc/passwd", READ)!
+
+    ...
+
+    // close can take responsibility
+    close(f')
+
+    // error, f is now invalid
+    write(f, "Hello world!")
+}
+
+
+
+
+// a resource that contains a linear type
+//  is implicitly a linear type
+Buffer :: struct {
+    data: >?'byte
+    size: n8
+    pos: n8
+}
+
+buffer_create :: (base_size: n8) : !Buffer' {
+    ret mark {data= malloc(base_size)!, size= base_size, pos= 0}
+}
+
+// you cannot destroy the sub linear types without
+//  having explicit responsibility
+buffer_destroy :: (buff: >Buffer') : void {
+    free(buff.data') // i.e. you can only do this because you own buffer here
+    buff.data = null;
+
+    unmark buff'    // and if the ownership is unmarked then all sub resources should
+    //  have been unmarked at this point
+}
+
+buffer_add :: (buff: >Buffer, str: string) : !void {
+    if (buff.pos + str.size >= buff.size) buffer_resize(buff)!
+
+    ...
+}
+
+// buffer_resize does not have 'permission' to destroy
+//  the resource, and so the state must be conserved
+//  i.e. buff.data must be marked at the end
+buffer_resize :: (buff: >Buffer) : !void {
+    // realloc :: (data: >'void, new_size: n4): >'void
+    // you cannot write to a marked resource without unmarking or passing responsibility first
+    buff.data= realloc(buff.data', buff.size << 1)!
+    // realloc return >' and so it is restored
+
+    // on error buff.data is not overwritten, and so is conserved
+}
+
+// what this can solve
+
+// This is linear types...
+
+// if a type contains a linear type it itself is linear
+// e.g. this buffer example
+
+// does not solve dangling pointers

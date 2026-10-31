@@ -1,0 +1,32 @@
+// in C functions are globally linkable
+// lexer.c
+// `- char consume();
+// parser.c
+// `- Token consume();
+
+//.../ATOMICA/atom_examples/030_global_static_scope/Parser.c:7:
+//      multiple definition of `consume';
+//      .../Lexer.c.obj:.../Lexer.c:5: first defined here
+
+// Good for libraries that want to just export everything
+//  I'd argue not good for programs
+
+// by default 'things' are 'static', c's version of static
+//  this is true for functions, variables, and types
+// 'things' can be made public with export
+export my_func :: () {}
+export my_var : i4= 0
+export my_const : i4 : 100
+export my_type :: data { NOTHING_TO_SEE_HERE }
+
+// entry automatically makes the function exported
+entry main :: (): i4 {}
+// same as
+export entry main :: (): i4 {}
+
+// import can be used to get all the exports from a file
+import "my_favourite_file.atm"
+// can be assigned to a variable to give it a named prefix
+MyFile :: import "my_favourite_file.atm"
+
+t: MyFile.my_type = NOTHING_TO_SEE_HERE

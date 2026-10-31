@@ -1,0 +1,63 @@
+// there are two versions of defer (in general)
+// the function level, which places the expression at all accessible
+//  exit points
+// the scope level, which places the expression at the end of the current
+//  scope
+//
+// Defer here is scope level
+
+entry main :: () : i4 {
+    file := open("/etc/passwd", READ)
+    if !file ret -1
+    defer close(file)
+
+    if (...) {
+        f2 := open("/etc/shadow", WRITE)
+        if !f2 {
+            // close(file)
+            ret -1
+        }
+        defer close(f2)
+
+        ...
+
+        // close(f2)
+        // close(file)
+        ret -1
+    }
+
+    {
+        f3 := open("/etc/shadow", WRITE)
+        if !f3 {
+            // close(file)
+            ret -1
+        }
+        defer close(f3)
+
+        print("Hello world!")
+        // close(f3)
+    }
+
+    // close(file)
+    ret 0
+}
+
+func :: () : i4 {
+    defer ret x
+    x:= y()
+    // ret x
+}
+// is this good?
+// the arguments are evaluated at the end of the function
+// acts like copy/paste then does validation
+//  i.e. x is not in scope at defer
+
+// some languages capture the value at the defer statement
+
+// defer works in a LIFO order
+defer close(f1)
+defer close(f2)
+
+// close(f2)
+// close(f1)
+// tries to represent the dependencies that may exist

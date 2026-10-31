@@ -1,0 +1,23 @@
+// if a language wants to be any level of successful past being used
+//  it must include some way of interacting with other languages
+//  especially c libraries
+
+// some things are made to help with interop at a language level
+// e.g. strings should include a null at the end of data
+//  and so string.data can be used as an input to char*
+
+
+// I think JAIs first metaprogram that can interface with the compiler is a cool idea
+//  and this is where adding libraries would happen
+ws.add_library("raylib")
+
+// how would the headers be included?
+//  could be defined in ATOM
+//  e.g.
+extern SetWindowState : (flags: n4): void
+extern SetClipboardText : (text: const >byte): void
+
+// or... maybe... libllvm and parsing C code
+// but unlikely, I'd like to avoid LLVM
+
+// maybe some lightweight C parser...
