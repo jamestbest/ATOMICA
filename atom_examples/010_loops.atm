@@ -43,11 +43,23 @@ for i: x {
 for x print("WOW\n")
 // prints 10 'WOW's
 
-for x: i4= 0; x < 10; x++ {
-    for ; x < 5; x++ {
+for { if x 10 else 1 } print("WOW\n")
+
+for x=1 {
+
+}
+
+resource_exists? {defer x ;}
+
+for (x: i4= 0 to x < 10 do {x++; x--}) {
+    for (to x < 5 do x++) {
         print("WOW\n")
     }
     print("%\n", x)
+}
+
+for (do i++) {
+
 }
 // WOW
 // WOW

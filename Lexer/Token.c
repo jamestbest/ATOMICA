@@ -28,9 +28,10 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_KEYWORD_FOR]= "KEYWORD_FOR",
     [TT_KEYWORD_IF]= "KEYWORD_IF",
     [TT_KEYWORD_IMPORT]= "KEYWORD_IMPORT",
-    [TT_KEYWORD_MARK]= "KEYWORD_MARK",
+    [TT_OPERATOR_PREFIX_MARK]= "KEYWORD_MARK",
     [TT_KEYWORD_RET]= "KEYWORD_RET",
-    [TT_KEYWORD_UNMARK]= "KEYWORD_UNMARK",
+    [TT_KEYWORD_TO]= "KEYWORD_TO",
+    [TT_OPERATOR_PREFIX_UNMARK]= "KEYWORD_UNMARK",
     [TT_KEYWORD_WHILE]= "KEYWORD_WHILE",
     [TT_KEYWORD_WITH]= "KEYWORD_WITH",
     [TT_KEYWORD_YIELD]= "KEYWORD_YIELD",
@@ -48,6 +49,7 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_TYPE_Q16]= "TYPE_Q16",
     [TT_TYPE_STRING]= "TYPE_STRING",
     [TT_TYPE_BOOL]= "TYPE_BOOL",
+    [TT_TYPE_VOID]= "TYPE_VOID",
     [TT_BOOLEAN_TRUE]= "BOOLEAN_TRUE",
     [TT_BOOLEAN_FALSE]= "BOOLEAN_FALSE",
     [TT_NULL]= "NULL",
@@ -90,7 +92,7 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_OPERATOR_POSTFIX_QUESTION]= "POSTFIX_QUESTION",
     [TT_OPERATOR_POSTFIX_EXCLAMATION]= "POSTFIX_EXCLAMATION",
     [TT_COLON]= "COLON",
-    [TT_OPERATOR_CARROT]= "CARROT",
+    [TT_OPERATOR_POSTFIX_CARROT]= "CARROT",
     [TT_COMMA]= "COMMA",
     [TT_OPERATOR_CAST]= "CAST(~)",
     [TT_OPERATOR_AMBIGUOUS_DOT]= "DOT",
@@ -179,7 +181,7 @@ void print_token(const Token t, size_t line, size_t col, const TokenArray* token
         get_line_and_col_info(t.buffer_index, &line, &col, tokens);
     }
 
-    printf("%zu:%zu> ", line, col);
+    printf("%zu:%zu(%u)> ", line, col, t.buffer_index);
     print_token_value(t);
 }
 

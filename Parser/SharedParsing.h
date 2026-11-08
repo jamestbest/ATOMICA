@@ -39,7 +39,10 @@ NodeRes parse_for();
 NodeRes parse_while();
 NodeRes parse_do();
 NodeRes parse_if();
-NodeRes parse_brace();
+NodeRes parse_compound_statement();
+NodeRes parse_yield();
+NodeRes parse_defer();
+NodeRes parse_array_literal();
 
 NodeRes parse_type();
 

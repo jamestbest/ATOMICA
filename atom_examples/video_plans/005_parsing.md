@@ -37,3 +37,25 @@ problems
  - | | is ambiguous in every way for capturing x|y|z is either capture or bitwise
    - x || z -- empty capture?
    - fine if limited to x |a| {z}, I think? and no empty ones
+
+x | y | z | w
+
+x:= READ | WRITE | EXECUTE
+
+x |> y z
+
+file? `err` ret! err
+file? <err> ret! err
+file? ¦err¦ ret! err
+file? /err/ ret! err
+file? \err\ ret! err
+file? name err ret! err
+file? |> err ret! err
+file? |>err| ret! err
+file? |:err| ret! err
+file? :err: ret! err
+file? :err ret! err
+file?:err ret! err
+func() |x| x*x
+
+file? |> err ret! err

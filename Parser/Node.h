@@ -22,6 +22,9 @@ typedef struct {
 typedef enum {
     NT_ROOT,
     NT_COMPOUND_STATEMENT,   // { }
+        // token= l brace
+        // lhs, rhs= extra array
+        // extra= [..]Statements
     NT_VAR_DECL,
         // token= ident
         // lhs= type | NONE
@@ -31,9 +34,60 @@ typedef enum {
         // lhs= type | NONE
         // rhs= value | NONE
 
+    NT_IMPORT_STATEMENT,
+        // token= import
+        // lhs= string TOKEN
+        // rhs= NONE
+
+    NT_IF_EXPR,
+        // token= if
+        // lhs, rhs= extra
+        // extra=   cond,
+        //          output,
+        //          else | NONE
+
+    NT_ELSE_EXPR,
+        // token= else
+        // lhs= output
+        // rhs= NONE
+
+    NT_DO_WHILE_EXPR,
+        // token= do
+        // lhs= cond
+        // rhs= output
+
+    NT_WHILE_EXPR,
+        // token= while
+        // lhs= cond
+        // rhs= output
+
+    NT_FOR_EACH_EXPR,
+        // token= for
+        // lhs,rhs= extra
+        // extra= element name TOKEN (if array name != NONE) OR expr index,
+        //          array name TOKEN OR NONE
+        //          with name TOKEN OR NONE
+        //          output expression
+
+    NT_FOR_EXPR,
+        // token= for
+        // lhs,rhs= extra
+        // extra= setup expression | NONE,
+        //          condition | NONE,
+        //          iteration | NONE
+
     NT_LAMBDA,
+        // token= lparen
+        // lhs= labda header
+        // rhs= body (compound statement)
     NT_LAMBDA_HEADER,
+        // token= lparen
+        // lhs, rhs= extra
+        // extra= [..]params, return type
     NT_PARAM,
+        // token: ident
+        // lhs: type
+        // rhs: default value | NONE
 
     NT_TYPED_IDENTIFIER,
         // token= ident
@@ -41,18 +95,56 @@ typedef enum {
         // rhs= NONE
 
     NT_TYPE_ERRORABLE,
+        // token= !
+        // lhs= errors identifier TOKEN | NONE
+        // rhs= return type index
 
     NT_TYPE_ARRAY_STATIC,
+        // token= lbracket
+        // lhs= inner type
+        // rhs= size_expr
     NT_TYPE_ARRAY_DYNAMIC,
+        // token= lbracket
+        // lhs= inner type
+        // rhs= NONE
     NT_TYPE_ARRAY_LINK,
+        // token= lbracket
+        // lhs= inner type
+        // rhs= NONE
     NT_TYPE_ARRAY_POOL,
+        // token= lbracket
+        // lhs= inner type
+        // rhs= NONE
     NT_TYPE_ARRAY_SLICE,
+        // token= lbracket
+        // lhs= inner type
+        // rhs= NONE
 
     NT_TYPE_NULLABLE,
+        // token= ?
+        // lhs= inner type
+        // rhs= NONE
     NT_TYPE_POINTER,
+        // token= >
+        // lhs= inner type
+        // rhs= NONE
+    NT_TYPE_MARKED,
+        // token= '
+        // lhs= inner type
+        // rhs= NONE
     NT_TYPE_BASE, // n8, n1, byte, string
+        // token= type
+        // lhs= NONE
+        // rhs= NONE
     NT_TYPE_LINK, // identifier to another type
-    NT_TYPE_CONST, // token= const, lhs= type|NONE
+        // token= identifier
+        // lhs= NONE
+        // rhs= NONE
+    NT_TYPE_CONST,
+        // token= const,
+        // lhs= type|NONE
+        // rhs= NONE
+
 
     NT_TYPE_DATA,
         // token= data
@@ -79,20 +171,91 @@ typedef enum {
         // rhs= end of extra
         // extra= [..]types, default value | NONE
 
-    NT_TYPE_MARKED,
 
-    NT_EXPR_LITERAL, // token= literal
-    NT_EXPR_OPERATOR_BINARY, // token= operator, lhs= lhs, rhs=rhs
-    NT_EXPR_OPERATOR_UNARY, // token= operator, lhs= operand
-    NT_EXPR_VARIABLE, // token= ident
-    NT_EXPR_FUNC_CALL, // token= ident, lhs= extra start, rhs= extra end
-    // extra contains args, NT_EXPR_*
-    NT_EXPR_ARRAY_INDEX, // token= ident, lhs= index expr
+    NT_EXPR_LITERAL,
+        // token= literal
+        // lhs= NONE
+        // rhs= NONE
+    NT_EXPR_LITERAL_ARRAY,
+        // token= [
+        // lhs, rhs= extra
+        // extra= [..]element expressions
 
-    NT_EXPR_RETURN, // token= ret, lhs= expr
+    NT_EXPR_OPERATOR_BINARY,
+        // token= operator
+        // lhs= lhs
+        // rhs=rhs
+    NT_EXPR_OPERATOR_UNARY,
+        // token= operator
+        // lhs= operand
+    NT_EXPR_VARIABLE,
+        // token= ident
+        // lhs= NONE
+        // rhs= NONE
+    NT_EXPR_FUNC_CALL,
+        // token= ident,
+        // lhs= extra start,
+        // rhs= extra end
+        // extra= [..]arg, NT_EXPR_*
+    NT_EXPR_ARRAY_INDEX,
+        // token= ident
+        // lhs= index expr
+        // rhs= NONE
+
+    NT_EXPR_RETURN,
+        // token= ret,
+        // lhs= expr | NONE
+        // rhs= NONE
+    NT_EXPR_RETURN_ERROR,
+        // token= ret
+        // lhs= expr | NONE
+        // rhs= NONE
+
+    NT_EXPR_YIELD,
+        // token= yield,
+        // lhs= expr | NONE
+        // rhs= NONE
+    NT_EXPR_YIELD_ERROR,
+        // token= yield,
+        // lhs= expr | NONE
+        // rhs= NONE
+
     NT_EXPR_BREAK,
+        // token= break
+        // lhs= expr | NONE
+        // rhs= NONE
+    NT_EXPR_BREAK_ERROR,
+        // token= break
+        // lhs= expr | NONE
+        // rhs= NONE
+
     NT_EXPR_CONTINUE,
+        // token= continue
+        // lhs= NONE
+        // rhs= NONE
+
+    NT_EXPR_DEFER,
+        // token= defer,
+        // lhs= statement | NONE
+        // rhs= NONE
+    NT_EXPR_DEFER_ERROR,
+        // token= defer,
+        // lhs= statement | NONE
+        // rhs= NONE
 } NodeType;
+
+typedef struct {
+    NodeIndex cond;
+    NodeIndex output;
+    NodeIndex else_;
+} NodeIf;
+NodeIf get_node_if(NodeIndex ni);
+
+typedef struct {
+    size_t arg_count;
+    size_t arg_start;
+} NodeFuncCall;
+NodeFuncCall get_node_func_call(NodeIndex ni);
 
 ARRAY_PROTO(NodeType, NodeType)
 ARRAY_PROTO(NodeIndex, NodeIndex);
@@ -110,5 +273,8 @@ extern TokenArray tokens;
 
 const char* node_type_string(NodeType type);
 void print_node(NodeIndex ni);
+
+#define TOKEN_AS_NODE_INDEX(token) (*(NodeIndex*)&token)
+#define NODE_INDEX_AS_TOKEN(index) (*(Token*)&index)
 
 #endif //ATOMICA_NODE_H

@@ -7,6 +7,8 @@ ExitCodes :: data {
 
 test :: 1 + -2 + x++ - -(--x) + x?y + x?
 
+x :: import "file.atm"
+
 entry main :: (argc: i4, argv: []string): i4 {
     if argc != 3 {
         print_usage();
@@ -22,34 +24,31 @@ entry main :: (argc: i4, argv: []string): i4 {
     // files is marked, [..]'string
     files := get_files_in_folder(output_folder)
     defer free(files')
-    for f: files {
+    for (f: files) {
         print("Folder contains: %", f)
     }
 
     ret EXIT_SUCCESS
 }
 
-print_usage :: () {
+print_usage :: (): void {
     print("./out <filename> <output_folder>\n")
 }
 
 open :: (filename: string): !>'File {
-    if ... ret! NOT_FOUND(filename)
+    if 1 ret! NOT_FOUND(filename)
 
-    if ... ret! PERMISSION_DENIED
+    if 0 ret! PERMISSION_DENIED
 
     ret file_out'
 }
 
-close :: (file: >'File) {
-    ...
+close :: (file: >'File): void {
     unmark file'
 }
 
 get_files_in_folder :: (folder: string): [..]'string {
     out: [..]'string= []
-
-    ...
 
     ret out'
 }

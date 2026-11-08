@@ -121,7 +121,7 @@ Token lex_token() {
         case '{': res= create_simple_token(TT_LBRACE); break;
         case '}': res= create_simple_token(TT_RBRACE); break;
 
-        case '\'': res= create_simple_token(TT_OPERATOR_CARROT); break;
+        case '\'': res= create_simple_token(TT_OPERATOR_POSTFIX_CARROT); break;
 
         case ':': res= create_simple_token(TT_COLON); break;
         case ',': res= create_simple_token(TT_COMMA); break;
@@ -313,7 +313,7 @@ static Token lex_comment() {
     consume();
     consume();
 
-    const Token res= create_simple_token(TT_COMMENT);
+    const Token res= create_simple_token(TT_IGNORE);
 
     while (current() != '\n') {
         consume();
@@ -390,7 +390,7 @@ static Token lex_identifier() {
             break;
         }
         case 'm': {
-            MATCH_CASE("mark", TT_KEYWORD_MARK)
+            MATCH_CASE("mark", TT_OPERATOR_PREFIX_MARK)
             break;
         }
         case 'q': {
@@ -413,10 +413,15 @@ static Token lex_identifier() {
         }
         case 't': {
             MATCH_CASE("true", TT_BOOLEAN_TRUE);
+            MATCH_CASE("to", TT_KEYWORD_TO);
             break;
         }
         case 'u': {
-            MATCH_CASE("unmark", TT_KEYWORD_UNMARK)
+            MATCH_CASE("unmark", TT_OPERATOR_PREFIX_UNMARK)
+            break;
+        }
+        case 'v': {
+            MATCH_CASE("void", TT_TYPE_VOID)
             break;
         }
         case 'w': {

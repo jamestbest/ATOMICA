@@ -7,8 +7,8 @@ include_directories(
     .
 )
 
-add_link_options(-fsanitize=undefined)
-add_compile_options(-fsanitize=undefined)
+#add_link_options(-fsanitize=undefined)
+#add_compile_options(-fsanitize=undefined)
 
 add_executable(ATOMICA main.c
         Lexer/Token.c

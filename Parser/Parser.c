@@ -7,6 +7,25 @@
 #include "Parser.h"
 
 #include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
+#include "ParserInternal.h"
 #include "Parser/SharedParsing.h"
 #include "Lexer/Token.h"
 #include "Parserr/Parserr.h"
@@ -26,6 +45,10 @@ NodeIndexArray extra_array;
 #define EXPECTED_NODE_COUNT 100
 // _Static_assert(EXPECTED_NODE_COUNT > 1, "");
 
+#define MAX_ENTRY_POINTS 10
+NodeIndex entry_points[MAX_ENTRY_POINTS];
+size_t entry_point_pos;
+
 NodeRes parse() {
     t_pos= 0;
 
@@ -37,6 +60,10 @@ NodeRes parse() {
 
     NodeIndexArray temp= NodeIndex_array_construct(10);
     while (t_pos < tokens.pos) {
+        eat_all_delimiters();
+
+        if (check(TT_EOTS)) break;
+
         const NodeRes res= parse_top_level_statement();
         if (res.errcode != EC_SUCCESS) return NODE_FAIL(res.errcode);
         print_node(res.index);
@@ -49,6 +76,45 @@ NodeRes parse() {
     NodeIndex_array_destroy(&temp);
 
     return NODE_SUCC(root);
+}
+
+static NodeRes parse_top_level_statement() {
+    Token t= current();
+
+    switch (t.type) {
+        case TT_IDENTIFIER: return parse_variable_declaration();
+        case TT_KEYWORD_IMPORT: return parse_import_statement();
+        case TT_KEYWORD_ENTRY: return parse_entry_statement();
+        default: {
+            parse_error("Expected variable declaration or import statement at top level of program. Found: ");
+            PRINT_TOKEN(t);
+            newline();
+            return NODE_FAIL(EC_FAIL);
+        }
+    }
+}
+
+// can either be just the header, or the header + body
+static NodeRes parse_lambda() {
+    if (!check(TT_LPAREN)) {
+        assert(false && "Attempted to parse lambda but did not get lparen as first token.\n");
+    }
+
+    const NodeRes header_res= parse_lambda_header();
+    PROP_FAIL(header_res);
+
+    if (check(TT_LBRACE)) {
+        const NodeRes body_res= parse_compound_statement();
+        PROP_FAIL(body_res)
+
+        const NodeIndex ni= node_create(NT_LAMBDA, GET_TOKEN(header_res.index));
+        SET_LHS(header_res.index, ni);
+        SET_RHS(body_res.index, ni);
+
+        return NODE_SUCC(ni);
+    }
+
+    return header_res;
 }
 
 static NodeRes parse_variable_declaration() {
@@ -100,10 +166,24 @@ static NodeRes parse_variable_declaration() {
         node_type= is_const_decl? NT_CONST_DECL: NT_VAR_DECL;
     }
 
-    const NodeRes value_res= parse_expr(false);
-    PROP_FAIL(value_res);
+    // special cases
+    // import & lambda
+    if (check(TT_KEYWORD_IMPORT)) {
+        const NodeRes import_res= parse_import_statement();
+        PROP_FAIL(import_res)
 
-    value= value_res.index;
+        value= import_res.index;
+    } else if (peer(2).type == TT_COLON) {
+        const NodeRes lambda_res= parse_lambda();
+        PROP_FAIL(lambda_res);
+
+        value= lambda_res.index;
+    } else {
+        const NodeRes value_res= parse_expr(false);
+        PROP_FAIL(value_res);
+
+        value= value_res.index;
+    }
 
 parse_vd_no_value:;
     const NodeIndex ni= node_create(node_type, ident);
@@ -113,14 +193,12 @@ parse_vd_no_value:;
     return NODE_SUCC(ni);
 }
 
-#define TOKEN_AS_NODE_INDEX(token) (*(NodeIndex*)&token)
-
 static NodeRes parse_type_errorable() {
     NodeIndex error_types= NODE_INDEX_NONE;
 
-    const NodeIndex ni= node_create(NT_TYPE_ERRORABLE, consume());
+    NodeIndex ni;
 
-    if (!EXPECT(TT_OPERATOR_AMBIGUOUS_EXCLAMATION)) {
+    if (!check(TT_OPERATOR_AMBIGUOUS_EXCLAMATION)) {
         Token identifier;
         if (!expect(TT_IDENTIFIER, &identifier)) {
             return unexpected(TT_IDENTIFIER, current(), "Currently error return types must be identifiers.\n");
@@ -128,9 +206,13 @@ static NodeRes parse_type_errorable() {
 
         error_types= TOKEN_AS_NODE_INDEX(identifier);
 
-        if (!EXPECT(TT_OPERATOR_AMBIGUOUS_EXCLAMATION)) {
+        if (!check(TT_OPERATOR_AMBIGUOUS_EXCLAMATION)) {
             return unexpected(TT_OPERATOR_AMBIGUOUS_EXCLAMATION, current(), "<<DEV>> How did we get here, we are parsing an errorable, but did not get an exclamation after identifier");
         }
+
+        ni= node_create(NT_TYPE_ERRORABLE, consume());
+    } else {
+        ni= node_create(NT_TYPE_ERRORABLE, consume());
     }
 
     const NodeRes return_type_res= parse_type();
@@ -148,13 +230,15 @@ static NodeRes parse_type_pointer() {
     Token ptr;
     if (!expect(TT_OPERATOR_AMBIGUOUS_MORE, &ptr)) return unexpected(TT_OPERATOR_AMBIGUOUS_MORE, current(), "<<DEVERROR>> tried to parse pointer type but did not get pointer at start.\n");
 
+    const NodeIndex ni= node_create(NT_TYPE_POINTER, ptr);
+    const NodeIndex wrapped_type= parse_type_append_postfixes(ni);
+
     NodeRes inner_type_res= parse_type();
     PROP_FAIL(inner_type_res)
 
-    NodeIndex ni= node_create(NT_TYPE_POINTER, ptr);
     SET_LHS(inner_type_res.index, ni);
 
-    return NODE_SUCC(ni);
+    return NODE_SUCC(wrapped_type);
 }
 
 // <ident>: <type>
@@ -391,6 +475,25 @@ bool is_valid_type_start(const TokenType type) {
     }
 }
 
+// check for ' and ? on a type
+static NodeIndex parse_type_append_postfixes(NodeIndex res) {
+    Token tok;
+
+    while (true) {
+        if (expect(TT_OPERATOR_AMBIGUOUS_QUESTION, &tok)) {
+            NodeIndex node= node_create(NT_TYPE_NULLABLE, tok);
+            SET_LHS(res, node);
+            res= node;
+        } else if (expect(TT_OPERATOR_POSTFIX_CARROT, &tok)) {
+            NodeIndex node= node_create(NT_TYPE_MARKED, tok);
+            SET_LHS(res, node);
+            res= node;
+        } else break;
+    }
+
+    return res;
+}
+
 // todo: maybe could store the types in a row, with the type ending on a base type tag
 NodeRes parse_type() {
     // >        -X- pointer prefix
@@ -402,28 +505,28 @@ NodeRes parse_type() {
     // []       -X- arrays
     // ()       -X- lambda header
     // data     -X- data type
-    // const    - -
+    // const    -X-
     // Errors!>i4
 
     NodeRes res;
     if (check(TT_KEYWORD_CONST)) {
         res= parse_type_const();
-        goto parse_type_postfix;
+        goto parse_type_end;
     }
 
     if (check(TT_OPERATOR_AMBIGUOUS_MORE)) {
         res= parse_type_pointer();
-        goto parse_type_postfix;
+        goto parse_type_end;
     }
 
     if (peek().type == TT_OPERATOR_AMBIGUOUS_EXCLAMATION || check(TT_OPERATOR_AMBIGUOUS_EXCLAMATION)) {
         res= parse_type_errorable();
-        goto parse_type_postfix;
+        goto parse_type_end;
     }
     
     if (check(TT_KEYWORD_DATA)) {
         res= parse_type_data();
-        goto parse_type_postfix;
+        goto parse_type_end;
     }
 
     Token tok;
@@ -499,18 +602,20 @@ NodeRes parse_type() {
             return unexpected(TT_RBRACKET, current(), "Array type syntax must have a closing bracket, e.g. [..], did not find it.\n");
         }
 
+        const NodeIndex wrapped_type= parse_type_append_postfixes(array_node_index);
+
         const NodeRes inner_type_res= parse_type();
         PROP_FAIL(inner_type_res);
 
         SET_LHS(inner_type_res.index, array_node_index);
 
-        res= NODE_SUCC(array_node_index);
-        goto parse_type_postfix;
+        res= NODE_SUCC(wrapped_type);
+        goto parse_type_end;
     }
 
     if (check(TT_LPAREN)) {
         res= parse_lambda_header();
-        goto parse_type_postfix;
+        goto parse_type_end;
     }
 
     parse_error("Unable to parse type. Starter token is not valid\n");
@@ -520,20 +625,45 @@ NodeRes parse_type() {
 parse_type_postfix:
     PROP_FAIL(res)
 
-    // check for marks and nullables
-    while (true) {
-        if (expect(TT_OPERATOR_AMBIGUOUS_QUESTION, &tok)) {
-            NodeIndex node= node_create(NT_TYPE_NULLABLE, tok);
-            SET_LHS(res.index, node);
-            res.index= node;
-        } else if (expect(TT_OPERATOR_CARROT, &tok)) {
-            NodeIndex node= node_create(NT_TYPE_MARKED, tok);
-            SET_LHS(res.index, node);
-            res.index= node;
-        } else break;
-    }
+    res.index= parse_type_append_postfixes(res.index);
+    return res;
+
+parse_type_end:
+    PROP_FAIL(res)
 
     return res;
+}
+
+NodeRes parse_array_literal() {
+    Token lbracket;
+    if (!expect(TT_LBRACKET, &lbracket)) {
+        assert(false && "Attempted to parse array literal, but did not start with lbracket.\n");
+    }
+
+    NodeIndexArray temp= NodeIndex_array_construct(3);
+
+    if (EXPECT(TT_RBRACKET)) goto parse_array_literal_no_elements;
+
+    do {
+        const NodeRes elem_res= parse_expr(false);
+        PROP_FAIL(elem_res);
+
+        NodeIndex_array_add(&temp, elem_res.index);
+    } while (EXPECT(TT_COMMA));
+
+    if (!EXPECT(TT_RBRACKET)) {
+        return unexpected(TT_RBRACKET, current(), "Array literal must be enclosed in brackets i.e. [], did not find right bracket.\n");
+    }
+
+parse_array_literal_no_elements:
+    const NodeIndex start= NodeIndex_array_add_bulk(&extra_array, temp.data, temp.pos);
+    const NodeIndex end= start + temp.pos - 1;
+
+    const NodeIndex ni= node_create(NT_EXPR_LITERAL_ARRAY, lbracket);
+    SET_LHS(start, ni);
+    SET_RHS(end, ni);
+
+    return NODE_SUCC(ni);
 }
 
 // starts with current= (
@@ -556,7 +686,7 @@ NodeRes parse_lambda_header() {
 
     NodeIndexArray params= NodeIndex_array_construct(4);
 
-    if (EXPECT(TT_RPAREN)) goto parse_lambda_header_no_params;
+    if (check(TT_RPAREN)) goto parse_lambda_header_no_params;
 
     do {
         // token: ident
@@ -586,12 +716,17 @@ parse_lambda_header_no_params:;
         return unexpected(TT_RPAREN, current(), "Lambda param list must be ended with a right parenthesis i.e. ')'\n");
     }
 
+    if (!EXPECT(TT_COLON)) {
+        return unexpected(TT_COLON, current(), "Lambda header requires return type after parameter list, specified by ':<type>' e.g. (): i4\n");
+    }
+
     const NodeRes return_type_res= parse_type();
     PROP_FAIL(return_type_res);
 
     const NodeIndex header_index= node_create(NT_LAMBDA_HEADER, paren_token);
     const NodeIndex extra_start= NodeIndex_array_add_bulk(&extra_array, params.data, params.pos);
-    const NodeIndex extra_end= extra_start + params.pos - 1;
+    NodeIndex_array_add(&extra_array, return_type_res.index);
+    const NodeIndex extra_end= extra_start + params.pos;
 
     SET_LHS(extra_start, header_index);
     SET_RHS(extra_end, header_index);
@@ -599,30 +734,73 @@ parse_lambda_header_no_params:;
     return NODE_SUCC(header_index);
 }
 
-NodeRes parse_import_statement() {
-    assert(false);
-}
-
-NodeRes parse_entry_statement() {
-    assert(false);
-}
-
-static NodeRes parse_top_level_statement() {
-    eat_all_delimiters();
-
-    Token t= current();
-
-    switch (t.type) {
-        case TT_IDENTIFIER: return parse_variable_declaration();
-        case TT_KEYWORD_IMPORT: return parse_import_statement();
-        case TT_KEYWORD_ENTRY: return parse_entry_statement();
-        default: {
-            parse_error("Expected variable declaration or import statement at top level of program. Found: ");
-            PRINT_TOKEN(t);
-            newline();
-            return NODE_FAIL(EC_FAIL);
-        }
+static NodeRes parse_import_statement() {
+    Token import_kw;
+    if (!expect(TT_KEYWORD_IMPORT, &import_kw)) {
+        assert(false && "Attempted to parse import statement but did not start with import.\n");
     }
+
+    Token file_string;
+    if (!expect(TT_LIT_STRING, &file_string)) {
+        return unexpected(TT_LIT_STRING, current(), "Import statements must have a string literal after, stating the file to import.\n");
+    }
+
+    const NodeIndex ni= node_create(NT_IMPORT_STATEMENT, import_kw);
+    SET_LHS(TOKEN_AS_NODE_INDEX(file_string), ni);
+
+    return NODE_SUCC(ni);
+}
+
+static NodeRes parse_entry_statement() {
+    consume();
+
+    const NodeRes vd_res= parse_variable_declaration();
+    PROP_FAIL(vd_res);
+
+    entry_points[entry_point_pos++]= vd_res.index;
+    return vd_res;
+}
+
+static NodeRes parse_statement() {
+    // can either be
+    //  - variable declaration
+    //  - expression
+
+    if (peek().type == TT_COLON) {
+        return parse_variable_declaration();
+    }
+    return parse_expr(false);
+}
+
+NodeRes parse_compound_statement() {
+    Token lbrace;
+    if (!expect(TT_LBRACE, &lbrace)) {
+        assert(false && "Attempted to parse compound statement, but does not start with lbrace.\n");
+    }
+
+    NodeIndexArray temp= NodeIndex_array_construct(6);
+
+    eat_all_delimiters();
+    while (!EXPECT(TT_RBRACE)) {
+        const NodeRes statement_res= parse_statement();
+        PROP_FAIL(statement_res);
+
+        eat_all_delimiters();
+
+        NodeIndex_array_add(&temp, statement_res.index);
+    }
+
+    const NodeIndex start= NodeIndex_array_add_bulk(&extra_array, temp.data, temp.pos);
+    const NodeIndex end= start + temp.pos - 1;
+
+    const NodeIndex ni= node_create(NT_COMPOUND_STATEMENT, lbrace);
+
+    SET_LHS(start, ni);
+    SET_RHS(end, ni);
+
+    NodeIndex_array_destroy(&temp);
+
+    return NODE_SUCC(ni);
 }
 
 static NodeRes parse_arg() {
@@ -649,6 +827,8 @@ static NodeRes parse_function_call() {
 
         if (check(TT_EOTS)) return unexpected(TT_RPAREN, current(), "Parsing function call, received end of token stream before closing paren.\n");
     } while (EXPECT(TT_COMMA));
+
+    if (!EXPECT(TT_RPAREN)) return unexpected(TT_RPAREN, current(), "Function call arguments must be enclosed in parenthesis, got left but not right.\n");
 
 parse_function_call_no_args:;
     const NodeIndex ni= node_create(NT_EXPR_FUNC_CALL, ident);
@@ -703,6 +883,8 @@ NodeRes parse_ret() {
     const Token ret_token= consume();
     assert(ret_token.type == TT_KEYWORD_RET && "parsing return but first token is not return.\n");
 
+    bool is_error_return= EXPECT(TT_OPERATOR_AMBIGUOUS_EXCLAMATION);
+
     NodeIndex result= NODE_INDEX_NONE;
     if (is_valid_expr_start(current().type)) {
         const NodeRes result_res= parse_expr(true);
@@ -711,7 +893,47 @@ NodeRes parse_ret() {
         result= result_res.index;
     }
 
-    const NodeIndex ni= node_create(NT_EXPR_RETURN, ret_token);
+    const NodeType type= is_error_return ? NT_EXPR_RETURN_ERROR : NT_EXPR_RETURN;
+    const NodeIndex ni= node_create(type, ret_token);
+    SET_LHS(result, ni);
+
+    return NODE_SUCC(ni);
+}
+
+NodeRes parse_yield() {
+    const Token yield_token= consume();
+    assert(yield_token.type == TT_KEYWORD_YIELD && "parsing yield but first token is not yield.\n");
+
+    const bool is_error_yield= EXPECT(TT_OPERATOR_AMBIGUOUS_EXCLAMATION);
+
+    NodeIndex result= NODE_INDEX_NONE;
+    if (is_valid_expr_start(current().type)) {
+        const NodeRes result_res= parse_expr(true);
+        PROP_FAIL(result_res)
+
+        result= result_res.index;
+    }
+
+    const NodeType type= is_error_yield ? NT_EXPR_YIELD_ERROR : NT_EXPR_YIELD;
+    const NodeIndex ni= node_create(type, yield_token);
+    SET_LHS(result, ni);
+
+    return NODE_SUCC(ni);
+}
+
+NodeRes parse_defer() {
+    const Token defer_token= consume();
+    assert(defer_token.type == TT_KEYWORD_DEFER && "parsing defer but first token is not defer.\n");
+
+    const bool is_error_defer= EXPECT(TT_OPERATOR_AMBIGUOUS_EXCLAMATION);
+
+    const NodeRes result_res= parse_statement();
+    PROP_FAIL(result_res)
+
+    const NodeIndex result= result_res.index;
+
+    const NodeType type= is_error_defer ? NT_EXPR_DEFER_ERROR : NT_EXPR_DEFER;
+    const NodeIndex ni= node_create(type, defer_token);
     SET_LHS(result, ni);
 
     return NODE_SUCC(ni);
@@ -721,6 +943,8 @@ NodeRes parse_break() {
     const Token break_tok= consume();
     assert(break_tok.type == TT_KEYWORD_BREAK && "parsing break but first token is not break.\n");
 
+    const bool is_error_return= EXPECT(TT_OPERATOR_AMBIGUOUS_EXCLAMATION);
+
     NodeIndex result= NODE_INDEX_NONE;
     if (is_valid_expr_start(current().type)) {
         const NodeRes result_res= parse_expr(true);
@@ -729,7 +953,8 @@ NodeRes parse_break() {
         result= result_res.index;
     }
 
-    const NodeIndex ni= node_create(NT_EXPR_BREAK, break_tok);
+    const NodeType type= is_error_return ? NT_EXPR_BREAK_ERROR : NT_EXPR_BREAK;
+    const NodeIndex ni= node_create(type, break_tok);
     SET_LHS(result, ni);
 
     return NODE_SUCC(ni);
@@ -743,24 +968,304 @@ NodeRes parse_continue() {
     return NODE_SUCC(ni);
 }
 
+NodeRes parse_for_each() {
+    Token for_token;
+    if (!expect(TT_KEYWORD_FOR, &for_token)) {
+        assert(false && "Attempted to parse for-each expression, but first token is not for.\n");
+    }
+
+    if (!EXPECT(TT_LPAREN)) {
+        return unexpected(TT_LPAREN, current(), "For-each expressions require being wrapped in parenthesis, e.g. for (x) {}.\n");
+    }
+
+    NodeIndexArray temp= NodeIndex_array_construct(4);
+
+    if (peek().type == TT_COLON) {
+        Token elem_token;
+        if (!expect(TT_IDENTIFIER, &elem_token)) {
+            return unexpected(TT_IDENTIFIER, current(), "For each expression that uses element in array format requires identifier:array. Didn't get element identifier.\n");
+        }
+
+        NodeIndex_array_add(&temp, TOKEN_AS_NODE_INDEX(elem_token));
+
+        if (!EXPECT(TT_COLON)) assert(false && "Attempted to parse for each with elem:array syntax but did not get colon.\n");
+
+        // todo: could support; for x: [1,2,3]
+        Token array_token;
+        if (!expect(TT_IDENTIFIER, &array_token)) {
+            return unexpected(TT_IDENTIFIER, current(), "For each expression that uses element in array format requires identifier:array. Didn't get array identifier.\n");
+        }
+
+        NodeIndex_array_add(&temp, TOKEN_AS_NODE_INDEX(array_token));
+    } else {
+        // for x
+        const NodeRes loop_res= parse_expr(true);
+        PROP_FAIL(loop_res);
+
+        NodeIndex_array_add(&temp, loop_res.index);
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE);
+    }
+
+    if (EXPECT(TT_KEYWORD_WITH)) {
+        Token with_ident_token;
+        if (!expect(TT_IDENTIFIER, &with_ident_token)) {
+            return unexpected(TT_IDENTIFIER, current(), "With requires identifier to give name to loop index.\n");
+        }
+
+        NodeIndex_array_add(&temp, TOKEN_AS_NODE_INDEX(with_ident_token));
+    } else {
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE);
+    }
+
+    if (!EXPECT(TT_RPAREN)) {
+        return unexpected(TT_RPAREN, current(), "For each expressions requires closing right parenthesis. E.g. for (x) {}\n");
+    }
+
+    const NodeRes output_res= parse_expr(false);
+    PROP_FAIL(output_res);
+
+    NodeIndex_array_add(&temp, output_res.index);
+
+    const NodeIndex ni= node_create(NT_FOR_EACH_EXPR, for_token);
+    const NodeIndex start= NodeIndex_array_add_bulk(&extra_array, temp.data, temp.pos);
+    const NodeIndex end= start + temp.pos - 1;
+
+    SET_LHS(start, ni);
+    SET_RHS(end, ni);
+
+    return NODE_SUCC(ni);
+}
+
+static NodeRes parse_for_cstyle() {
+    Token for_token;
+    if (!expect(TT_KEYWORD_FOR, &for_token)) {
+        assert(false && "Attempted to parse for (cstyle) expression, but first token is not for.\n");
+    }
+
+    if (!EXPECT(TT_LPAREN)) {
+        return unexpected(TT_LPAREN, current(), "For (cstyle) expressions require being wrapped in parenthesis, e.g. for (x: i4= 0 to x < 10) {}.\n");
+    }
+
+    NodeIndexArray temp= NodeIndex_array_construct(4);
+
+    // INIT CHECK
+    if (check(TT_KEYWORD_TO)) {
+        // no init
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE); // no init
+        goto parse_for_cstyle_no_init;
+    }
+
+    if (check(TT_KEYWORD_DO)) {
+        // no init and no cond
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE); // no init
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE); // no cond
+        goto parse_for_cstyle_no_cond;
+    }
+
+    if (is_assign_operator(peek().type)) {
+        const NodeRes va_res= parse_expr(false);
+        PROP_FAIL(va_res);
+
+        NodeIndex_array_add(&temp, va_res.index);
+    } else if (peek().type == TT_COLON) {
+        const NodeRes vd_res= parse_variable_declaration();
+        PROP_FAIL(vd_res);
+
+        NodeIndex_array_add(&temp, vd_res.index);
+    }
+
+parse_for_cstyle_no_init:
+
+    // COND CHECK
+    if (EXPECT(TT_KEYWORD_TO)) {
+        const NodeRes cond_res= parse_expr(false);
+        PROP_FAIL(cond_res);
+
+        NodeIndex_array_add(&temp, cond_res.index);
+    } else {
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE);
+    }
+
+parse_for_cstyle_no_cond:
+    // LOOP CHECK
+    if (EXPECT(TT_KEYWORD_DO)) {
+        const NodeRes cond_res= parse_expr(false);
+        PROP_FAIL(cond_res);
+
+        NodeIndex_array_add(&temp, cond_res.index);
+    } else {
+        NodeIndex_array_add(&temp, NODE_INDEX_NONE);
+    }
+
+    if (!EXPECT(TT_RPAREN)) {
+        return unexpected(TT_RPAREN, current(), "For (cstyle) expressions requires closing right parenthesis. E.g. for (x:i4= 0 to x < 10) {}\n");
+    }
+
+    const NodeRes output_res= parse_expr(false);
+    PROP_FAIL(output_res);
+
+    NodeIndex_array_add(&temp, output_res.index);
+
+    const NodeIndex start= NodeIndex_array_add_bulk(&extra_array, temp.data, temp.pos);
+    const NodeIndex end= start + temp.pos - 1;
+
+    const NodeIndex ni= node_create(NT_FOR_EXPR, for_token);
+    SET_LHS(start, ni);
+    SET_RHS(end, ni);
+
+    return NODE_SUCC(ni);
+}
+
 NodeRes parse_for() {
-    return NODE_FAIL(EC_FAIL);
+    const size_t t_pos_before= t_pos;
+
+    Token for_token;
+    if (!expect(TT_KEYWORD_FOR, &for_token)) {
+        assert(false && "Attempted to parse for expression, but first token is not for.\n");
+    }
+
+    NodeType type= NT_FOR_EACH_EXPR;
+
+    const Token p2= peek();
+    // todo: may cause issues when impl. metaprogramming
+    //  which inserts tokens before the for loop
+    // we need to find the type of for loop i.e. c-style or for-each
+    // c-style could be for ;;
+    // for each doesn't allow for vd with initialisation e.g. x:A=0, just x:A
+    // maybe restore the token pointer after parsing vd? to split this into two
+    //  functions? this may cause issues with the metaprogramming
+    // for x #insert ${ : i4 }
+
+    // funcA :: () { #insert #run funcB() }
+    // funcB :: () {}
+    // funcC :: () { for i: #insert #run funcA() }
+
+    // todo: crude way to check which type of for loop it is
+    // lookhead(1)
+    if (is_assign_operator(p2.type)) {
+        const NodeRes va_res= parse_expr(false);
+        PROP_FAIL(va_res);
+
+        if (EXPECT(TT_KEYWORD_TO)) {
+            // here we are the for loop
+            type= NT_FOR_EXPR;
+        } else {
+            // here we are a foreach loop
+            type= NT_FOR_EACH_EXPR;
+        }
+    } else if (p2.type == TT_COLON) {
+        const NodeRes vd_res= parse_variable_declaration();
+        PROP_FAIL(vd_res);
+
+        if (EXPECT(TT_KEYWORD_TO)) {
+            // here we are the for loop
+            type= NT_FOR_EXPR;
+        } else {
+            // here we are a foreach loop
+            type= NT_FOR_EACH_EXPR;
+        }
+    }
+
+    t_pos= t_pos_before;
+
+    if (type == NT_FOR_EACH_EXPR) return parse_for_each();
+    if (type == NT_FOR_EXPR) return parse_for_cstyle();
+
+    assert(false);
 }
 
 NodeRes parse_while() {
+    Token while_token;
+    if (!expect(TT_KEYWORD_WHILE, &while_token)) {
+        assert(false && "Attempted to parse while, but the first token is not while.\n");
+    }
+
+    const NodeRes cond_res= parse_expr(false);
+    PROP_FAIL(cond_res);
+
+    const NodeRes output_res= parse_expr(false);
+    PROP_FAIL(output_res);
+
+    const NodeIndex ni= node_create(NT_WHILE_EXPR, while_token);
+    SET_LHS(cond_res.index, ni);
+    SET_RHS(output_res.index, ni);
+
     return NODE_FAIL(EC_FAIL);
 }
 
 NodeRes parse_do() {
+    Token do_token;
+    if (!expect(TT_KEYWORD_DO, &do_token)) {
+        assert(false && "Attempted to parse do-while, but the first token is not do.\n");
+    }
+
+    const NodeRes output_res= parse_expr(false);
+    PROP_FAIL(output_res);
+
+    if (!EXPECT(TT_KEYWORD_WHILE)) {
+        return unexpected(TT_KEYWORD_WHILE, current(), "Do while expressions require while condition after output expression. E.g. do {} while x\n");
+    }
+
+    const NodeRes cond_res= parse_expr(false);
+    PROP_FAIL(cond_res);
+
+    const NodeIndex ni= node_create(NT_DO_WHILE_EXPR, do_token);
+    SET_LHS(cond_res.index, ni);
+    SET_RHS(output_res.index, ni);
+
     return NODE_FAIL(EC_FAIL);
 }
 
 NodeRes parse_if() {
-    return NODE_FAIL(EC_FAIL);
+    Token if_token;
+    if (!expect(TT_KEYWORD_IF, &if_token)) {
+        assert(false && "Attempted to parse if statement, but the first token is not if.\n");
+    }
+
+    const NodeRes cond_res= parse_expr(false);
+    PROP_FAIL(cond_res);
+
+    const NodeRes output_res= parse_expr(false);
+    PROP_FAIL(output_res)
+
+    NodeIndex else_idx= NODE_INDEX_NONE;
+    if (check(TT_KEYWORD_ELSE)) {
+        const NodeRes else_res= parse_else();
+        PROP_FAIL(else_res)
+
+        else_idx= else_res.index;
+    }
+
+    NodeIndex to_add[3]= {
+        cond_res.index,
+        output_res.index,
+        else_idx
+    };
+
+    const NodeIndex ni= node_create(NT_IF_EXPR, if_token);
+    const NodeIndex start= NodeIndex_array_add_bulk(&extra_array,
+        to_add, 3
+    );
+
+    SET_LHS(start, ni);
+    SET_RHS(start + 2, ni);
+
+    return NODE_SUCC(ni);
 }
 
-NodeRes parse_brace() {
-    return NODE_FAIL(EC_FAIL);
+static NodeRes parse_else() {
+    Token else_token;
+    if (!expect(TT_KEYWORD_ELSE, &else_token)) {
+        assert(false && "Attempted to parse else statement, but the first token is not else.\n");
+    }
+
+    const NodeRes output_res= parse_statement();
+    PROP_FAIL(output_res)
+
+    const NodeIndex ni= node_create(NT_ELSE_EXPR, else_token);
+    SET_LHS(output_res.index, ni);
+
+    return NODE_SUCC(ni);
 }
 
 static void setup_node_array() {

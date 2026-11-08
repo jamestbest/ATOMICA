@@ -26,6 +26,12 @@ static VarDeclNode var_decl_node_get(NodeIndex index);
 
 static NodeRes parse_lambda_header();
 static NodeRes parse_expr(bool allow_trailing_parens);
+static NodeRes parse_variable_declaration();
+static NodeRes parse_entry_statement();
+static NodeRes parse_import_statement();
+static NodeIndex parse_type_append_postfixes(NodeIndex res);
+
+static NodeRes parse_else();
 
 static void destroy_node_array();
 static void setup_node_array();

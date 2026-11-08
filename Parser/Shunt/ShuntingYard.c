@@ -12,15 +12,6 @@
 #include "Parser/Parserr/Parserr.h"
 #include "shared/String.h"
 
-static uint8_t get_prec(TokenType type);
-static bool is_prefix_operator(TokenType type);
-static bool is_postfix_operator(TokenType type);
-static bool is_unary_operator(TokenType type);
-static bool is_assign_operator(TokenType type);
-static bool is_right_assoc(TokenType type);
-static bool is_binary_operator(TokenType type);
-static bool is_operator(TokenType type);
-
 typedef enum {
     // operand like
     EXPECTING_START,
@@ -74,6 +65,8 @@ static bool check_and_update_expectations(const TokenType type, EXPECTING* expec
 typedef NodeRes (*ParseFunc)(void);
 static ParseFunc parse_functions[]= {
     [TT_IDENTIFIER]= parse_identifier,
+    [TT_KEYWORD_YIELD]= parse_yield,
+    [TT_KEYWORD_DEFER]= parse_defer,
     [TT_KEYWORD_RET]= parse_ret,
     [TT_KEYWORD_BREAK]= parse_break,
     [TT_KEYWORD_CONTINUE]= parse_continue,
@@ -81,17 +74,17 @@ static ParseFunc parse_functions[]= {
     [TT_KEYWORD_WHILE]= parse_while,
     [TT_KEYWORD_DO]= parse_do,
     [TT_KEYWORD_IF]= parse_if,
-    [TT_LBRACE]= parse_brace,
+    [TT_LBRACE]= parse_compound_statement,
 };
 
 bool is_valid_expr_start(const TokenType type) {
-    // TT_KEYWORD_DEFER: // todo: think about defer being an expression
-    // TT_KEYWORD_IMPORT // todo: think about import being an expression
+    // TT_KEYWORD_IMPORT // todo: think about import being an expression; probably not
     if (is_prefix_operator(type)) return true;
 
     switch (type) {
         case TT_LBRACE:
         case TT_LPAREN:
+        case TT_LBRACKET:
         case TT_IDENTIFIER:
         case TT_KEYWORD_BREAK:
         case TT_KEYWORD_CONTINUE:
@@ -99,11 +92,12 @@ bool is_valid_expr_start(const TokenType type) {
         case TT_KEYWORD_DO:
         case TT_KEYWORD_FOR:
         case TT_KEYWORD_IF:
-        case TT_KEYWORD_MARK:
+        case TT_OPERATOR_PREFIX_MARK:
         case TT_KEYWORD_RET:
-        case TT_KEYWORD_UNMARK:
+        case TT_OPERATOR_PREFIX_UNMARK:
         case TT_KEYWORD_WHILE:
         case TT_KEYWORD_YIELD:
+        case TT_KEYWORD_DEFER:
         case TT_TYPE_I1:
         case TT_TYPE_I2:
         case TT_TYPE_I4:
@@ -147,7 +141,10 @@ static uint8_t PRECEDENCE[TT_INTERNAL_OPERATOR_END - TT_INTERNAL_OPERATOR_START 
     [TT_OPERATOR_PREFIX_ADDRESS - PRECEDENCE_OFFSET]= 2,
 
     [TT_OPERATOR_POSTFIX_QUESTION - PRECEDENCE_OFFSET]= 3,
-    [TT_OPERATOR_CARROT - PRECEDENCE_OFFSET]= 3,
+    [TT_OPERATOR_POSTFIX_CARROT - PRECEDENCE_OFFSET]= 3,
+
+    [TT_OPERATOR_PREFIX_UNMARK - PRECEDENCE_OFFSET]= 4,
+    [TT_OPERATOR_PREFIX_MARK - PRECEDENCE_OFFSET]= 4,
 
     [TT_OPERATOR_MULT - PRECEDENCE_OFFSET]= 4,
     [TT_OPERATOR_DIV - PRECEDENCE_OFFSET]= 4,
@@ -183,41 +180,41 @@ static uint8_t PRECEDENCE[TT_INTERNAL_OPERATOR_END - TT_INTERNAL_OPERATOR_START 
     [TT_OPERATOR_ASSIGN_SUBTRACT - PRECEDENCE_OFFSET]= 17,
 };
 
-static uint8_t get_prec(TokenType type) {
+uint8_t get_prec(TokenType type) {
     return PRECEDENCE[type - PRECEDENCE_OFFSET];
 }
 
-static bool is_prefix_operator(TokenType type) {
+bool is_prefix_operator(TokenType type) {
     return type > TT_INTERNAL_OPERATOR_PREFIX_START &&
            type < TT_INTERNAL_OPERATOR_PREFIX_END;
 }
 
-static bool is_postfix_operator(TokenType type) {
+bool is_postfix_operator(TokenType type) {
     return type > TT_INTERNAL_OPERATOR_POSTFIX_START &&
            type < TT_INTERNAL_OPERATOR_POSTFIX_END;
 }
 
-static bool is_unary_operator(TokenType type) {
+bool is_unary_operator(TokenType type) {
     return type > TT_INTERNAL_OPERATOR_UNARY_START &&
            type < TT_INTERNAL_OPERATOR_UNARY_END;
 }
 
-static bool is_assign_operator(const TokenType type) {
+bool is_assign_operator(const TokenType type) {
     return type > TT_INTERNAL_OPERATOR_ASSIGN_START &&
            type < TT_INTERNAL_OPERATOR_ASSIGN_END;
 }
 
-static bool is_right_assoc(const TokenType type) {
+bool is_right_assoc(const TokenType type) {
     return is_prefix_operator(type) ||
            is_assign_operator(type);
 }
 
-static bool is_binary_operator(const TokenType type) {
+bool is_binary_operator(const TokenType type) {
     return type > TT_INTERNAL_OPERATOR_BINARY_START &&
            type < TT_INTERNAL_OPERATOR_BINARY_END;
 }
 
-static bool is_operator(const TokenType type) {
+bool is_operator(const TokenType type) {
     return type > TT_INTERNAL_OPERATOR_START &&
            type < TT_INTERNAL_OPERATOR_END;
 }
@@ -248,8 +245,8 @@ static NodeRes build_binary_operator(const Token operator, NodeIndexArray* outpu
     }
 
     const NodeIndex ni= node_create(NT_EXPR_OPERATOR_BINARY, operator);
-    SET_LHS(NodeIndex_array_pop(output_s), ni);
     SET_RHS(NodeIndex_array_pop(output_s), ni);
+    SET_LHS(NodeIndex_array_pop(output_s), ni);
 
     return NODE_SUCC(ni);
 }
@@ -363,9 +360,7 @@ NodeRes shunt(bool allow_trailing_parens) {
         // unary operators
 
         disambiguate_operator_type(&c, &operator_s, expecting);
-        print_token(c, -1, -1, &tokens);
-        newline();
-        
+
         // todo
         // types -- value is their size
         // maybe defer
@@ -418,12 +413,21 @@ NodeRes shunt(bool allow_trailing_parens) {
         bool end= false;
         switch (c.type) {
             case TT_LIT_FLOAT:
-            case TT_LIT_INT: {
+            case TT_LIT_INT:
+            case TT_LIT_STRING: {
                 const Token tok= consume();
                 // todo: maybe split the ints and floats?
                 const NodeIndex ni= node_create(NT_EXPR_LITERAL, tok);
                 NodeIndex_array_add(&output_s, ni);
 
+                break;
+            }
+
+            case TT_LBRACKET: {
+                const NodeRes array_res= parse_array_literal();
+                PROP_FAIL(array_res);
+
+                NodeIndex_array_add(&output_s, array_res.index);
                 break;
             }
 
@@ -444,6 +448,7 @@ NodeRes shunt(bool allow_trailing_parens) {
             case TT_KEYWORD_WHILE:
             case TT_KEYWORD_DO:
             case TT_KEYWORD_IF:
+            case TT_KEYWORD_DEFER:
             case TT_LBRACE: {
                 const ParseFunc func= parse_functions[c.type];
                 assert(func);
@@ -460,7 +465,7 @@ NodeRes shunt(bool allow_trailing_parens) {
                 break;
             }
             case TT_RPAREN: {
-                const Token r_paren_tok= consume();
+                const Token r_paren_tok= current();
 
                 if (Token_array_empty(&operator_s)) {
                     if (!allow_trailing_parens) {
@@ -469,6 +474,7 @@ NodeRes shunt(bool allow_trailing_parens) {
                         newline();
                         return NODE_FAIL(EC_FAIL);
                     }
+                    end= true;
                     break;
                 }
 
@@ -490,9 +496,11 @@ NodeRes shunt(bool allow_trailing_parens) {
                         newline();
                         return NODE_FAIL(EC_FAIL);
                     }
+                    end= true;
                     break;
                 }
 
+                consume();
                 Token_array_pop(&operator_s);
                 break;
             }
@@ -520,6 +528,8 @@ NodeRes shunt(bool allow_trailing_parens) {
 
         NodeIndex_array_add(&output_s, op_res.index);
     }
+
+    fflush(stdout);
 
     return NODE_SUCC(NodeIndex_array_pop(&output_s));
 }

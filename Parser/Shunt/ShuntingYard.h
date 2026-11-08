@@ -14,4 +14,14 @@ NodeRes shunt(bool allow_trailing_parens);
 
 bool is_valid_expr_start(TokenType type);
 
+uint8_t get_prec(TokenType type);
+bool is_prefix_operator(TokenType type);
+bool is_postfix_operator(TokenType type);
+bool is_unary_operator(TokenType type);
+bool is_assign_operator(TokenType type);
+bool is_right_assoc(TokenType type);
+bool is_binary_operator(TokenType type);
+bool is_operator(TokenType type);
+
+
 #endif //ATOMICA_SHUNTINGYARD_H
