@@ -5,15 +5,25 @@ ExitCodes :: data {
     EXIT_FAILURE= 1
 }
 
-test :: 1 + -2 + x++ - -(--x) + x?y + x?
+a: i4?= 12
+y :: 18
+test :: 1 + -2 + a++ - -(--a) + a?y + a?
 
 x :: import "file.atm"
 
 entry main :: (argc: i4, argv: []string): i4 {
-    if argc != 3 {
+    if (argc != 3) {
         print_usage();
         ret EXIT_FAILURE
     }
+
+    a : code? : ${x: i4= 0+12}
+//    b :: $""
+
+//    #insert a
+    b :: a! |:err| {print("failed"); ret err}
+
+    c: id: $a
 
     filename: string= argv[1]
     output_folder:= argv[2]
@@ -36,9 +46,9 @@ print_usage :: (): void {
 }
 
 open :: (filename: string): !>'File {
-    if 1 ret! NOT_FOUND(filename)
+    if (1) ret! NOT_FOUND(filename)
 
-    if 0 ret! PERMISSION_DENIED
+    if (0) ret! PERMISSION_DENIED
 
     ret file_out'
 }

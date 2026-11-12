@@ -9,8 +9,6 @@
 
 #include "Lexer/Token.h"
 
-extern TokenArray tokens;
-
 NodeRes parse_error(const char* message, ...) {
     va_list args;
     va_start(args, message);
@@ -22,7 +20,7 @@ NodeRes parse_error(const char* message, ...) {
     return NODE_FAIL(EC_FAIL);
 }
 
-NodeRes unexpected(TokenType expected_type, Token received, char* message, ...) {
+NodeRes unexpected(MyTokenType expected_type, Token received, char* message, ...) {
     printf("Expected token type '%s' but received: ", token_type_string(expected_type));
     PRINT_TOKEN(received);
     printf(" In context: ");

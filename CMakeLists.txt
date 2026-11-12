@@ -30,7 +30,17 @@ add_executable(ATOMICA main.c
         Parser/Node.c
         Parser/Node.h
         Error.h
-        Error.c)
+        Error.c
+        Parser/TLSCollection/TLSPass.c
+        Parser/TLSCollection/TLSPass.h
+        Gluon/Jobs/Job.c
+        Gluon/Jobs/Job.h
+        shared/QueueBlocking.c
+        shared/QueueBlocking.h
+        shared/ArrayG.c
+        shared/ArrayG.h
+        Gluon/Gluon.c
+        Gluon/Gluon.h)
 
 
 add_executable(EXAMPLES_300

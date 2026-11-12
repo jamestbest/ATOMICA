@@ -24,7 +24,7 @@ typedef enum {
     EXPECTING_OPERATOR_LIKE,
 } EXPECTING;
 
-static bool check_and_update_expectations(const TokenType type, EXPECTING* expecting) {
+static bool check_and_update_expectations(const MyTokenType type, EXPECTING* expecting) {
     // todo: do
     // if expecting operand like do we have operand like next
     //  etc
@@ -37,7 +37,10 @@ static bool check_and_update_expectations(const TokenType type, EXPECTING* expec
             break;
         }
         case EXPECTING_OPERATOR_LIKE: {
-            is_valid= is_binary_operator(type) || is_postfix_operator(type) || type == TT_RPAREN;
+            is_valid=   is_binary_operator(type) ||
+                        is_ternary_operator(type) ||
+                        is_postfix_operator(type) ||
+                        type == TT_RPAREN;
             break;
         }
         default: assert(false);
@@ -77,7 +80,7 @@ static ParseFunc parse_functions[]= {
     [TT_LBRACE]= parse_compound_statement,
 };
 
-bool is_valid_expr_start(const TokenType type) {
+bool is_valid_expr_start(const MyTokenType type) {
     // TT_KEYWORD_IMPORT // todo: think about import being an expression; probably not
     if (is_prefix_operator(type)) return true;
 
@@ -110,6 +113,7 @@ bool is_valid_expr_start(const TokenType type) {
         case TT_TYPE_Q4:
         case TT_TYPE_Q8:
         case TT_TYPE_Q16:
+        case TT_DOLLAR:
         case TT_TYPE_STRING:
         case TT_TYPE_BOOL:
         case TT_BOOLEAN_TRUE:
@@ -122,6 +126,11 @@ bool is_valid_expr_start(const TokenType type) {
         default:
             return false;
     }
+}
+
+// right side of ?!
+bool is_valid_qe_expr_start(const MyTokenType type) {
+    return is_valid_expr_start(type) || type == TT_OPERATOR_AMBIGUOUS_BITWISE_OR;
 }
 
 // todo do the prefix and postfix and binary versions
@@ -180,41 +189,45 @@ static uint8_t PRECEDENCE[TT_INTERNAL_OPERATOR_END - TT_INTERNAL_OPERATOR_START 
     [TT_OPERATOR_ASSIGN_SUBTRACT - PRECEDENCE_OFFSET]= 17,
 };
 
-uint8_t get_prec(TokenType type) {
+uint8_t get_prec(MyTokenType type) {
     return PRECEDENCE[type - PRECEDENCE_OFFSET];
 }
 
-bool is_prefix_operator(TokenType type) {
+bool is_prefix_operator(MyTokenType type) {
     return type > TT_INTERNAL_OPERATOR_PREFIX_START &&
            type < TT_INTERNAL_OPERATOR_PREFIX_END;
 }
 
-bool is_postfix_operator(TokenType type) {
+bool is_postfix_operator(MyTokenType type) {
     return type > TT_INTERNAL_OPERATOR_POSTFIX_START &&
            type < TT_INTERNAL_OPERATOR_POSTFIX_END;
 }
 
-bool is_unary_operator(TokenType type) {
+bool is_unary_operator(MyTokenType type) {
     return type > TT_INTERNAL_OPERATOR_UNARY_START &&
            type < TT_INTERNAL_OPERATOR_UNARY_END;
 }
 
-bool is_assign_operator(const TokenType type) {
+bool is_assign_operator(const MyTokenType type) {
     return type > TT_INTERNAL_OPERATOR_ASSIGN_START &&
            type < TT_INTERNAL_OPERATOR_ASSIGN_END;
 }
 
-bool is_right_assoc(const TokenType type) {
+bool is_right_assoc(const MyTokenType type) {
     return is_prefix_operator(type) ||
            is_assign_operator(type);
 }
 
-bool is_binary_operator(const TokenType type) {
+bool is_binary_operator(const MyTokenType type) {
     return type > TT_INTERNAL_OPERATOR_BINARY_START &&
            type < TT_INTERNAL_OPERATOR_BINARY_END;
 }
 
-bool is_operator(const TokenType type) {
+bool is_ternary_operator(const MyTokenType type) {
+    return type == TT_OPERATOR_TERNARY_CAPTURE;
+}
+
+bool is_operator(const MyTokenType type) {
     return type > TT_INTERNAL_OPERATOR_START &&
            type < TT_INTERNAL_OPERATOR_END;
 }
@@ -229,6 +242,34 @@ static NodeRes build_unary_operator(const Token operator, NodeIndexArray* output
 
     const NodeIndex ni= node_create(NT_EXPR_OPERATOR_UNARY, operator);
     SET_LHS(NodeIndex_array_pop(output_s), ni);
+
+    return NODE_SUCC(ni);
+}
+
+static NodeRes build_ternary_operator(const Token operator, NodeIndexArray* output_s) {
+    if (output_s->pos < 3) {
+        parse_error("Tried to form a ternary operator, but there are less than three operands on the stack.\nOperator:");
+        PRINT_TOKEN(operator);
+        newline();
+        return NODE_FAIL(EC_FAIL);
+    }
+
+    const NodeIndex ni= node_create(NT_EXPR_OPERATOR_TERNARY, operator);
+
+    const NodeIndex right= NodeIndex_array_pop(output_s);
+    const NodeIndex middle= NodeIndex_array_pop(output_s);
+    const NodeIndex left= NodeIndex_array_pop(output_s);
+
+    const NodeIndex temp[3]= {
+        left,
+        middle,
+        right
+    };
+    const NodeIndex start= NodeIndex_array_add_bulk(&extra_array, (void*)temp, 3);
+    const NodeIndex end= start + 2;
+
+    SET_LHS(start, ni);
+    SET_RHS(end, ni);
 
     return NODE_SUCC(ni);
 }
@@ -255,6 +296,7 @@ static NodeRes build_operator(const Token operator, NodeIndexArray* output_s) {
     // todo: support non binary operators
     if (is_binary_operator(operator.type)) return build_binary_operator(operator, output_s);
     if (is_unary_operator(operator.type)) return build_unary_operator(operator, output_s);
+    if (is_ternary_operator(operator.type)) return build_ternary_operator(operator, output_s);
 
     assert(false);
 }
@@ -291,7 +333,7 @@ static void disambiguate_operator_type(Token* token, TokenArray* operator_s, EXP
         }
         case TT_OPERATOR_AMBIGUOUS_QUESTION: {
             const Token n= peek();
-            if (is_valid_expr_start(n.type)) {
+            if (is_valid_qe_expr_start(n.type)) {
                 token->type= TT_OPERATOR_BINARY_QUESTION;
             } else {
                 token->type= TT_OPERATOR_POSTFIX_QUESTION;
@@ -305,7 +347,7 @@ static void disambiguate_operator_type(Token* token, TokenArray* operator_s, EXP
             }
 
             const Token n= peek();
-            if (is_valid_expr_start(n.type)) {
+            if (is_valid_qe_expr_start(n.type)) {
                 token->type= TT_OPERATOR_BINARY_EXCLAMATION;
             } else {
                 token->type= TT_OPERATOR_POSTFIX_EXCLAMATION;
@@ -342,6 +384,73 @@ static void disambiguate_operator_type(Token* token, TokenArray* operator_s, EXP
     }
 }
 
+static int check_operator(NodeIndexArray* output_s, TokenArray* operator_s, const Token o1) {
+    while (!Token_array_empty(operator_s)) {
+        Token o2 = Token_array_get(operator_s, operator_s->pos - 1);
+        if (o2.type == TT_LPAREN) break;
+
+        const uint8_t o1_pres= get_prec(o1.type);
+        const uint8_t o2_pres= get_prec(o2.type);
+
+        if (o2_pres > o1_pres) break;
+        if (o2_pres == o1_pres && is_right_assoc(o1.type)) break;
+
+        Token o2_mirror= Token_array_pop(operator_s);
+        assert(memcmp(&o2, &o2_mirror, sizeof(Token)) == 0);
+
+        const NodeRes op_res= build_operator(o2, output_s);
+        if (op_res.errcode != EC_SUCCESS) return op_res.errcode;
+
+        NodeIndex_array_add(output_s, op_res.index);
+    }
+
+    return EC_SUCCESS;
+}
+
+// |:a,b,c|
+// |:x|
+static NodeRes parse_operator_ternary_capture() {
+    Token op;
+    if (!expect(TT_OPERATOR_TERNARY_CAPTURE, &op)) {
+        assert(false && "Attempted to parse ternary capture, but did not start with ternary operator");
+    }
+
+    if (check(TT_OPERATOR_AMBIGUOUS_BITWISE_OR)) {
+        return parse_error("Captures must not be empty.\n");
+    }
+
+    Token first_ident;
+    if (!expect(TT_IDENTIFIER, &first_ident)) {
+        return unexpected(TT_IDENTIFIER, current(),
+            "Captures must contain identifiers.\n");
+    }
+
+    NodeIndex ni;
+    if (peek().type == TT_COMMA) {
+        ni= node_create(NT_IDENTIFIER_LIST, first_ident);
+
+        SET_LHS(extra_array.pos, ni);
+        do {
+            Token ident;
+            if (!expect(TT_IDENTIFIER, &ident)) {
+                return unexpected(TT_IDENTIFIER, current(),
+                    "Capture comma list must be identifiers seperated by commas, e.g. x,y,z\n");
+            }
+            NodeIndex_array_add(&extra_array, TOKEN_AS_NODE_INDEX(ident));
+        } while (EXPECT(TT_COMMA));
+        SET_RHS(extra_array.pos - 1, ni);
+    } else {
+        ni= node_create(NT_IDENTIFIER, first_ident);
+    }
+
+    if (!EXPECT(TT_OPERATOR_AMBIGUOUS_BITWISE_OR)) {
+        return unexpected(TT_OPERATOR_AMBIGUOUS_BITWISE_OR, current(),
+            "Capture's must be enclosed in |:x|\n");
+    }
+
+    return NODE_SUCC(ni);
+}
+
 NodeRes shunt(bool allow_trailing_parens) {
     Token c;
 
@@ -367,7 +476,6 @@ NodeRes shunt(bool allow_trailing_parens) {
         // maybe import
         if (!check_and_update_expectations(c.type, &expecting)) {
             break;
-            return NODE_FAIL(EC_FAIL);
         }
 
         // todo: if types are valid in expressions i.e. they give their size
@@ -383,28 +491,27 @@ NodeRes shunt(bool allow_trailing_parens) {
             continue;
         }
 
+        // x |:a,b,c| z
+        // x y z
+        // |:|
+
+        if (c.type == TT_OPERATOR_TERNARY_CAPTURE) {
+            const NodeRes res= parse_operator_ternary_capture();
+            PROP_FAIL(res)
+
+            if (check_operator(&output_s, &operator_s, c) != EC_SUCCESS) return NODE_FAIL(EC_FAIL);
+
+            NodeIndex_array_add(&output_s, res.index);
+            Token_array_add(&operator_s, c);
+
+            continue;
+        }
+
         if (is_operator(c.type)) {
             consume();
             const Token o1= c;
 
-            while (!Token_array_empty(&operator_s)) {
-                Token o2 = Token_array_get(&operator_s, operator_s.pos - 1);
-                if (o2.type == TT_LPAREN) break;
-
-                const uint8_t o1_pres= get_prec(o1.type);
-                const uint8_t o2_pres= get_prec(o2.type);
-
-                if (o2_pres > o1_pres) break;
-                if (o2_pres == o1_pres && is_right_assoc(o1.type)) break;
-
-                Token o2_mirror= Token_array_pop(&operator_s);
-                assert(memcmp(&o2, &o2_mirror, sizeof(Token)) == 0);
-
-                const NodeRes op_res= build_operator(o2, &output_s);
-                PROP_FAIL(op_res);
-
-                NodeIndex_array_add(&output_s, op_res.index);
-            }
+            if (check_operator(&output_s, &operator_s, o1) != EC_SUCCESS) return NODE_FAIL(EC_FAIL);
 
             Token_array_add(&operator_s, o1);
             continue;
@@ -420,6 +527,13 @@ NodeRes shunt(bool allow_trailing_parens) {
                 const NodeIndex ni= node_create(NT_EXPR_LITERAL, tok);
                 NodeIndex_array_add(&output_s, ni);
 
+                break;
+            }
+            case TT_DOLLAR: {
+                const NodeRes res= parse_dollar();
+                PROP_FAIL(res)
+
+                NodeIndex_array_add(&output_s, res.index);
                 break;
             }
 

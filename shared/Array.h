@@ -22,6 +22,7 @@ Array array_construct(size_t element_size, size_t number_of_elements);
 Array array_create(size_t element_size);
 bool array_resize(Array* arr, size_t new_max_number_of_elements);
 size_t array_add(Array* arr, void* elem);
+size_t array_add_dyn(Array* arr, void* elem, size_t elem_size);
 void* array_ptr(const Array* arr, size_t index);
 size_t array_add_bulk(Array* arr, void* elems, size_t number_of_elements);
 void array_destroy(Array* arr);

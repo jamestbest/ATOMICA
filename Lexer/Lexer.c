@@ -14,6 +14,9 @@
 
 #include "shared/Array.h"
 
+#define LEX_SUCC(x) (LexRes){.tokens= x, .errcode= EC_SUCCESS}
+#define LEX_FAIL (LexRes){.errcode= EC_FAIL}
+
 static uint32_t current();
 static uint32_t consume();
 static uint32_t peek();
@@ -49,18 +52,17 @@ static Buffer buff;
 static size_t cursor;
 
 ARRAY_ADD(Token, Token)
-extern TokenArray tokens;
 
 static Token lex_token();
 static Token lex_comment();
 static Token lex_identifier();
 static Token lex_numeric_literal();
 
-int lex(const char* file_path) {
-    tokens= Token_array_construct(5);
+LexRes lex(const char* file_path) {
+    TokenArray tokens= Token_array_construct(5);
 
-    const int res= read_file_into_buffer(file_path, &buff);
-    if (res != EXIT_SUCCESS) return res;
+    const int ec= read_file_into_buffer(file_path, &buff);
+    if (ec != EXIT_SUCCESS) return LEX_FAIL;
 
     cursor= 0;
 
@@ -68,8 +70,8 @@ int lex(const char* file_path) {
         const Token t= lex_token();
         if (t.type == TT_IGNORE) continue;
         if (t.type == TT_ERROR) {
-            perror("lexer found error.\n");
-            return EXIT_FAILURE;
+            fprintf(stderr, "lexer found error.\n");
+            return LEX_FAIL;
         }
 
         Token_array_add(&tokens, t);
@@ -77,9 +79,17 @@ int lex(const char* file_path) {
 
     Token_array_add(&tokens, (Token){.type= TT_EOTS, .buffer_index= cursor});
 
-    print_all_tokens(&tokens);
+    MyTokenSource source= (MyTokenSource) {
+        .data= tokens.data,
+        .current_idx= 0,
+        .start_idx= 0,
+        .end_idx= tokens.pos - 1,
+        .start_col= 0,
+        .start_line= 0
+    };
+    print_all_tokens(source);
 
-    return EXIT_SUCCESS;
+    return (LexRes){.tokens= tokens, .errcode= EC_SUCCESS};
 }
 
 static size_t get_token_end(size_t start) {
@@ -101,7 +111,7 @@ uint8_t* get_token_start_ptr(const Token t) {
     return &buff.data[t.buffer_index];
 }
 
-static Token create_simple_token(TokenType type) {
+static Token create_simple_token(MyTokenType type) {
     return (Token) {
         .type= type,
         .buffer_index= cursor
@@ -120,6 +130,8 @@ Token lex_token() {
         case ')': res= create_simple_token(TT_RPAREN); break;
         case '{': res= create_simple_token(TT_LBRACE); break;
         case '}': res= create_simple_token(TT_RBRACE); break;
+
+        case '$': res= create_simple_token(TT_DOLLAR); break;
 
         case '\'': res= create_simple_token(TT_OPERATOR_POSTFIX_CARROT); break;
 
@@ -202,6 +214,11 @@ Token lex_token() {
                 consume();
                 break;
             }
+            if (peek() == ':') {
+                res= create_simple_token(TT_OPERATOR_TERNARY_CAPTURE);
+                consume();
+                break;
+            }
             if (peek() == '-') {
                 if (peer(2) == '|') {
                     res= create_simple_token(TT_OPERATOR_LOGICAL_XOR);
@@ -213,7 +230,7 @@ Token lex_token() {
                 consume();
                 break;
             }
-            res= create_simple_token(TT_OPERATOR_BITWISE_AND);
+            res= create_simple_token(TT_OPERATOR_AMBIGUOUS_BITWISE_OR);
             break;
         }
 
@@ -306,7 +323,7 @@ lex_cont:
 
     printf("Did not match on character '%c' v: %d.\n", current(), current());
 
-    return (Token){.type= TT_IGNORE};
+    return (Token){.type= TT_ERROR};
 }
 
 static Token lex_comment() {
@@ -348,6 +365,7 @@ static Token lex_identifier() {
         case 'c': {
             MATCH_CASE("continue", TT_KEYWORD_CONTINUE)
             MATCH_CASE("const", TT_KEYWORD_CONST)
+            MATCH_CASE("code", TT_TYPE_CODE)
             break;
         }
         case 'd': {
@@ -369,6 +387,7 @@ static Token lex_identifier() {
         case 'i': {
             MATCH_CASE("if", TT_KEYWORD_IF)
             MATCH_CASE("import", TT_KEYWORD_IMPORT)
+            MATCH_CASE("id", TT_TYPE_ID)
             switch (*(start_ptr + 1)) {
                 case '1': MATCH_RES(TT_TYPE_I1)
                 case '2': MATCH_RES(TT_TYPE_I2)

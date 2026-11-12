@@ -171,7 +171,26 @@ typedef enum {
         // rhs= end of extra
         // extra= [..]types, default value | NONE
 
+    // $<ident>
+    // NOT AN IDENTIFIER
+    NT_IDENTIFIER_LITERAL,
+        // token= ident
+        // lhs= NONE
+        // rhs= NONE
 
+    NT_IDENTIFIER,
+        // token= ident,
+        // lhs= NONE
+        // rhs= NONE
+    NT_IDENTIFIER_LIST,
+        // token= first ident
+        // lhs, rhs= extra
+        // extra= [..]Ident TOKENS
+
+    NT_EXPR_CODE_LITERAL,
+        // token= brace
+        // lhs, rhs= extra
+        // extra[0..3(inc)]= TokenSource
     NT_EXPR_LITERAL,
         // token= literal
         // lhs= NONE
@@ -188,6 +207,10 @@ typedef enum {
     NT_EXPR_OPERATOR_UNARY,
         // token= operator
         // lhs= operand
+    NT_EXPR_OPERATOR_TERNARY,
+        // token= operator
+        // lhs, rhs= extra,
+        // extra= left, middle, right operands
     NT_EXPR_VARIABLE,
         // token= ident
         // lhs= NONE
@@ -269,7 +292,7 @@ typedef struct {
 
 extern NodeArray node_array;
 extern NodeIndexArray extra_array;
-extern TokenArray tokens;
+extern __thread MyTokenSource source;
 
 const char* node_type_string(NodeType type);
 void print_node(NodeIndex ni);

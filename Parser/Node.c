@@ -91,6 +91,7 @@ const char* node_type_string(const NodeType type) {
         case NT_EXPR_LITERAL_ARRAY: return "EXPR_LITERAL_ARRAY";
         case NT_EXPR_OPERATOR_BINARY: return "EXPR_OPERATOR_BINARY";
         case NT_EXPR_OPERATOR_UNARY: return "EXPR_OPERATOR_UNARY";
+        case NT_EXPR_OPERATOR_TERNARY: return "NT_EXPR_OPERATOR_TERNARY";
         case NT_EXPR_VARIABLE: return "EXPR_VARIABLE";
         case NT_EXPR_FUNC_CALL: return "EXPR_FUNC_CALL";
         case NT_EXPR_ARRAY_INDEX: return "EXPR_ARRAY_INDEX";
@@ -110,6 +111,10 @@ const char* node_type_string(const NodeType type) {
         case NT_EXPR_BREAK_ERROR: return "EXPR_BREAK_ERROR";
         case NT_EXPR_DEFER: return "EXPR_DEFER";
         case NT_EXPR_DEFER_ERROR: return "EXPR_DEFER_ERROR";
+        case NT_IDENTIFIER: return "IDENTIFIER";
+        case NT_IDENTIFIER_LIST: return "IDENTIFIER_LIST";
+        case NT_EXPR_CODE_LITERAL: return "CODE_LITERAL";
+        case NT_IDENTIFIER_LITERAL: return "IDENTIFIER_LITERAL";
         default:
             assert(false && "You didn't add the NT to this function. BAD.\n");
     }
@@ -477,6 +482,16 @@ void print_node(const NodeIndex ni) {
 
             break;
         }
+        case NT_EXPR_OPERATOR_TERNARY: {
+            printf(">\n");
+
+            UNWRAP_L(start)
+            print_child(NodeIndex_array_get(&extra_array, start));
+            print_child(NodeIndex_array_get(&extra_array, start + 1));
+            print_last_child(NodeIndex_array_get(&extra_array, start + 2));
+
+            break;
+        }
         case NT_EXPR_VARIABLE: {
             printf(">\n");
             break;
@@ -633,5 +648,37 @@ void print_node(const NodeIndex ni) {
 
             print_last_child(statement);
             break;
+        case NT_IDENTIFIER: {
+            printf(">\n");
+
+            break;
+        }
+        case NT_IDENTIFIER_LIST: {
+            printf(">\n");
+
+            UNWRAP_LR(start, end);
+
+            for (size_t i = start; i < end + 1; ++i) {
+                const NodeIndex child= NodeIndex_array_get(&extra_array, i);
+                print_child_ambiguous(child, i == end);
+            }
+
+            break;
+        }
+        case NT_EXPR_CODE_LITERAL: {
+            UNWRAP_LR(start, end)
+            const MyTokenSource token_source= *(MyTokenSource*)NodeIndex_array_ptr(&extra_array, start);
+            const size_t token_count= token_source.end_idx - token_source.start_idx + 1;
+            printf("(%zu token%s) ", token_count, token_count > 1 ? "s": "");
+            printf(">\n");
+
+            break;
+        }
+        case NT_IDENTIFIER_LITERAL: {
+            printf(">\n");
+            break;
+        }
+        default:
+            assert(false);
     }
 }

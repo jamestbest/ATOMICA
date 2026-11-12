@@ -14,7 +14,12 @@ typedef struct {
      size_t pos;
 } Buffer;
 
-int lex(const char* file_path);
+typedef struct {
+     int errcode;
+     TokenArray tokens;
+} LexRes;
+
+LexRes lex(const char* file_path);
 uint8_t* get_token_end_ptr(Token t);
 uint8_t* get_token_start_ptr(Token t);
 

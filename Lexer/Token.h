@@ -58,6 +58,9 @@ typedef enum {
 
     TT_TYPE_VOID,
 
+    TT_TYPE_CODE,
+    TT_TYPE_ID,
+
     TT_INTERNAL_TYPE_END,
 
     TT_BOOLEAN_TRUE,
@@ -155,6 +158,8 @@ typedef enum {
     TT_COLON, // :
     TT_COMMA, // ,
 
+    TT_DOLLAR, // $
+
     TT_HASH, // #
 
     TT_LIT_INT,
@@ -171,20 +176,29 @@ typedef enum {
     TT_ERROR,
 
     TT_COUNT
-} TokenType;
+} MyTokenType;
 
 typedef struct {
-    TokenType type: 8;
+    MyTokenType type: 8;
     uint32_t buffer_index: 24;
 } Token;
 
+typedef struct {
+    Token* data; // todo: make this uint32_t somehow
+    uint32_t start_idx;
+    uint32_t current_idx;
+    uint32_t end_idx; // inclusive
+    uint32_t start_line;
+    uint32_t start_col;
+} MyTokenSource;
+
 ARRAY_PROTO(Token, Token)
 
-const char* token_type_string(TokenType type);
-void print_token(Token t, size_t line, size_t col, const TokenArray* tokens);
+const char* token_type_string(MyTokenType type);
+void print_token(Token t, size_t line, size_t col, MyTokenSource source);
 void print_token_value(Token t);
-void print_all_tokens(const TokenArray* tokens);
+void print_all_tokens(MyTokenSource source);
 
-#define PRINT_TOKEN(t) print_token(t, -1, -1, &tokens)
+#define PRINT_TOKEN(t) print_token(t, -1, -1, source)
 
 #endif //ATOMICA_TOKEN_H

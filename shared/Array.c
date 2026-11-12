@@ -51,6 +51,22 @@ size_t array_add(Array* arr, void* elem) {
     return arr->pos++;
 }
 
+// todo: find better way to check if int ceil in slots needed
+size_t array_add_dyn(Array* arr, void* elem, size_t elem_size) {
+    const size_t slots_needed= (elem_size / arr->element_size) + (elem_size % arr->element_size != 0);
+    if (arr->pos + slots_needed >= arr->max_elements) {
+        const size_t max= MAX(arr->max_elements << 1, arr->max_elements + slots_needed + 1);
+        if (!array_resize(arr, max)) assert(false && "Failed to resize array in array add");
+    }
+
+    memcpy((uint8_t*)arr->data + (arr->pos * arr->element_size), elem, elem_size);
+
+    const size_t res= arr->pos;
+    arr->pos += slots_needed;
+
+    return res;
+}
+
 void* array_ptr(const Array* arr, const size_t index) {
     if (index >= arr->pos) return NULL;
     return (uint8_t*)arr->data + (index * arr->element_size);

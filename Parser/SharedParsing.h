@@ -8,14 +8,17 @@
 #include "Parser.h"
 #include "Lexer/Token.h"
 
+extern __thread MyTokenSource source;
+
 void eat_all_delimiters();
 Token current();
 Token consume();
 Token peek();
 Token peer(size_t offset);
-bool check(TokenType type);
-bool expect(TokenType type, Token* out);
-bool between(TokenType type, TokenType start_exclusive, TokenType end_exclusive);
+bool check(MyTokenType type);
+bool expect(MyTokenType type, Token* out);
+#define EXPECT(type) expect(type, NULL)
+bool between(MyTokenType type, MyTokenType start_exclusive, MyTokenType end_exclusive);
 
 #define SET_LHS(elem, index) (NodeIndex_array_set(&node_array.lhs, elem, index))
 #define SET_RHS(elem, index) (NodeIndex_array_set(&node_array.rhs, elem, index))
@@ -43,6 +46,7 @@ NodeRes parse_compound_statement();
 NodeRes parse_yield();
 NodeRes parse_defer();
 NodeRes parse_array_literal();
+NodeRes parse_dollar();
 
 NodeRes parse_type();
 

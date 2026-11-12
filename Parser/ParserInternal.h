@@ -9,8 +9,6 @@
 
 #include "Parser/SharedParsing.h"
 
-#define EXPECT(type) expect(type, NULL)
-
 ARRAY_ADD(NodeType, NodeType)
 ARRAY_ADD(NodeIndex, NodeIndex)
 

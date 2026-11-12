@@ -9,8 +9,8 @@
 #include "shared/Array.h"
 #include "Node.h"
 
-bool is_valid_type_start(TokenType type);
+bool is_valid_type_start(MyTokenType type);
 
-NodeRes parse();
+NodeRes parse(MyTokenSource source);
 
 #endif //ATOMICA_PARSER_H

@@ -7,26 +7,7 @@
 #include "Parser.h"
 
 #include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "ParserInternal.h"
-#include "Parser/SharedParsing.h"
+#include "SharedParsing.h"
 #include "Lexer/Token.h"
 #include "Parserr/Parserr.h"
 #include "shared/String.h"
@@ -36,7 +17,7 @@
 // todo: zero init node_array or write INDEX_NONE (don't do that)
 // todo: eat delimiters in braces
 
-static size_t t_pos;
+__thread MyTokenSource source;
 
 NodeArray node_array;
 // if lhs or rhs are NODE_INDEX_NONE then there is no data in the extra_array
@@ -49,8 +30,9 @@ NodeIndexArray extra_array;
 NodeIndex entry_points[MAX_ENTRY_POINTS];
 size_t entry_point_pos;
 
-NodeRes parse() {
-    t_pos= 0;
+NodeRes parse(MyTokenSource source_) {
+    source= source_;
+    source.current_idx= source.start_idx;
 
     setup_node_array();
     extra_array= NodeIndex_array_construct(EXPECTED_NODE_COUNT);
@@ -59,7 +41,7 @@ NodeRes parse() {
     const NodeIndex root= node_create(NT_ROOT, (Token){0});
 
     NodeIndexArray temp= NodeIndex_array_construct(10);
-    while (t_pos < tokens.pos) {
+    while (source.current_idx <= source.end_idx) {
         eat_all_delimiters();
 
         if (check(TT_EOTS)) break;
@@ -463,7 +445,7 @@ static NodeRes parse_type_const() {
     return NODE_SUCC(ni);
 }
 
-bool is_valid_type_start(const TokenType type) {
+bool is_valid_type_start(const MyTokenType type) {
     if (type > TT_INTERNAL_TYPE_START && type < TT_INTERNAL_TYPE_END) return true;
 
     switch (type) {
@@ -664,6 +646,77 @@ parse_array_literal_no_elements:
     SET_RHS(end, ni);
 
     return NODE_SUCC(ni);
+}
+
+// {}
+static NodeRes parse_code_literal() {
+    Token brace;
+    if (!expect(TT_LBRACE, &brace)) {
+        assert(false && "Attempted to parse code literal but did not start with LBRACE.\n");
+    }
+
+    MyTokenSource new_source= {
+        .data= source.data,
+        .start_idx= source.current_idx,
+        .end_idx= source.current_idx
+    };
+
+    const NodeIndex ni= node_create(NT_EXPR_CODE_LITERAL, brace);
+
+    size_t lbrace_count= 1;
+    while (true) {
+        const MyTokenType type= current().type;
+        if (type == TT_LBRACE) lbrace_count++;
+        if (type == TT_RBRACE) lbrace_count--;
+        if (type == TT_EOTS) break;
+
+        if (lbrace_count == 0) break;
+
+        consume();
+    }
+    new_source.end_idx= source.current_idx - 1;
+
+    if (!EXPECT(TT_RBRACE)) {
+        return unexpected(TT_RBRACE, current(), "Code literals must be enclosed in ${}\n");
+    }
+
+    const NodeIndex start= array_add_dyn((Array*)&extra_array, &new_source, sizeof(MyTokenSource));
+    SET_LHS(start, ni);
+    SET_RHS(extra_array.pos - 1, ni);
+
+    return NODE_SUCC(ni);
+}
+
+// this is not an identifier it is the string name of the identifier
+static NodeRes parse_identifier_literal() {
+    Token ident;
+    if (!expect(TT_IDENTIFIER, &ident)) {
+        assert(false && "Attempted to parse identifier literal ($<ident>), but did not start with identifier.\n");
+    }
+
+    const NodeIndex ni= node_create(NT_IDENTIFIER_LITERAL, ident);
+
+    return NODE_SUCC(ni);
+}
+
+// ${} -- code literal
+// $<ident> -- identifier
+// $"" -- maybe: string interp
+NodeRes parse_dollar() {
+    Token dollar;
+    if (!expect(TT_DOLLAR, &dollar)) {
+        assert(false && "Attempted to parse dollar, but first token was not $.\n");
+    }
+
+    if (check(TT_LBRACE)) {
+        return parse_code_literal();
+    }
+
+    if (check(TT_IDENTIFIER)) {
+        return parse_identifier_literal();
+    }
+
+    return parse_error("Invalid token after dollar. Only accept code literals atm (${}).\n");
 }
 
 // starts with current= (
@@ -868,7 +921,7 @@ NodeRes parse_identifier() {
     // variable
     // function call
     // an array index x[]
-    const TokenType peeked_type= peek().type;
+    const MyTokenType peeked_type= peek().type;
 
     if (peeked_type == TT_LPAREN) return parse_function_call();
     if (peeked_type == TT_LBRACKET) return parse_array_index();
@@ -1117,7 +1170,7 @@ parse_for_cstyle_no_cond:
 }
 
 NodeRes parse_for() {
-    const size_t t_pos_before= t_pos;
+    const size_t t_pos_before= source.current_idx;
 
     Token for_token;
     if (!expect(TT_KEYWORD_FOR, &for_token)) {
@@ -1166,7 +1219,7 @@ NodeRes parse_for() {
         }
     }
 
-    t_pos= t_pos_before;
+    source.current_idx= t_pos_before;
 
     if (type == NT_FOR_EACH_EXPR) return parse_for_each();
     if (type == NT_FOR_EXPR) return parse_for_cstyle();
@@ -1180,8 +1233,18 @@ NodeRes parse_while() {
         assert(false && "Attempted to parse while, but the first token is not while.\n");
     }
 
+    if (!EXPECT(TT_LPAREN)) {
+        return unexpected(TT_LPAREN, current(),
+            "The condition of a while must be wrapped in parenthesis. Sorry :(.\n");
+    }
+
     const NodeRes cond_res= parse_expr(false);
     PROP_FAIL(cond_res);
+
+    if (!EXPECT(TT_RPAREN)) {
+        return unexpected(TT_RPAREN, current(),
+            "The condition of a while must be wrapped in parenthesis, did not find closing paren.\n");
+    }
 
     const NodeRes output_res= parse_expr(false);
     PROP_FAIL(output_res);
@@ -1206,8 +1269,18 @@ NodeRes parse_do() {
         return unexpected(TT_KEYWORD_WHILE, current(), "Do while expressions require while condition after output expression. E.g. do {} while x\n");
     }
 
+    if (!EXPECT(TT_LPAREN)) {
+        return unexpected(TT_LPAREN, current(),
+            "The condition of a do-while must be wrapped in parenthesis. Sorry :(.\n");
+    }
+
     const NodeRes cond_res= parse_expr(false);
     PROP_FAIL(cond_res);
+
+    if (!EXPECT(TT_RPAREN)) {
+        return unexpected(TT_RPAREN, current(),
+            "The condition of a do-while must be wrapped in parenthesis, did not find closing paren.\n");
+    }
 
     const NodeIndex ni= node_create(NT_DO_WHILE_EXPR, do_token);
     SET_LHS(cond_res.index, ni);
@@ -1222,8 +1295,19 @@ NodeRes parse_if() {
         assert(false && "Attempted to parse if statement, but the first token is not if.\n");
     }
 
-    const NodeRes cond_res= parse_expr(false);
+    // if () {}
+    if (!EXPECT(TT_LPAREN)) {
+        return unexpected(TT_LPAREN, current(),
+            "The condition of an if must be wrapped in parenthesis. Sorry :(.\n");
+    }
+
+    const NodeRes cond_res= parse_expr(true);
     PROP_FAIL(cond_res);
+
+    if (!EXPECT(TT_RPAREN)) {
+        return unexpected(TT_RPAREN, current(),
+            "The condition of an if must be wrapped in parenthesis, did not find closing paren.\n");
+    }
 
     const NodeRes output_res= parse_expr(false);
     PROP_FAIL(output_res)
@@ -1315,7 +1399,7 @@ static VarDeclNode var_decl_node_get(NodeIndex index) {
     };
 }
 
-static inline bool is_delimiter(const TokenType type) {
+static inline bool is_delimiter(const MyTokenType type) {
     return type == TT_DELIMITER || type == TT_NEWLINE;
 }
 
@@ -1324,17 +1408,17 @@ void eat_all_delimiters() {
 }
 
 Token current() {
-    if (t_pos >= tokens.pos) return (Token) {
+    if (source.current_idx > source.end_idx) return (Token) {
         .type= TT_EOTS,
         .buffer_index= -1
     };
 
-    return Token_array_get(&tokens, t_pos);
+    return source.data[source.current_idx];
 }
 
 Token consume() {
     const Token res= current();
-    t_pos++;
+    source.current_idx++;
     return res;
 }
 
@@ -1343,19 +1427,19 @@ Token peek() {
 }
 
 Token peer(size_t offset) {
-    if (t_pos + offset >= tokens.pos) return (Token) {
+    if (source.current_idx + offset > source.end_idx) return (Token) {
         .type= TT_EOTS,
         .buffer_index= -1
     };
 
-    return Token_array_get(&tokens, t_pos + offset);
+    return source.data[source.current_idx + offset];
 }
 
-bool check(const TokenType type) {
+bool check(const MyTokenType type) {
     return (current().type == type);
 }
 
-bool expect(const TokenType type, Token* out) {
+bool expect(const MyTokenType type, Token* out) {
     if (current().type == type) {
         if (out) {
             *out= consume();
@@ -1369,7 +1453,7 @@ bool expect(const TokenType type, Token* out) {
     return false;
 }
 
-inline bool between(TokenType type, TokenType start_exclusive, TokenType end_exclusive) {
+inline bool between(MyTokenType type, MyTokenType start_exclusive, MyTokenType end_exclusive) {
     return (start_exclusive < type) && (type < end_exclusive);
 }
 

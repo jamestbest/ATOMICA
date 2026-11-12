@@ -50,6 +50,8 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_TYPE_STRING]= "TYPE_STRING",
     [TT_TYPE_BOOL]= "TYPE_BOOL",
     [TT_TYPE_VOID]= "TYPE_VOID",
+    [TT_TYPE_CODE]= "TYPE_CODE",
+    [TT_TYPE_ID]= "TYPE_ID",
     [TT_BOOLEAN_TRUE]= "BOOLEAN_TRUE",
     [TT_BOOLEAN_FALSE]= "BOOLEAN_FALSE",
     [TT_NULL]= "NULL",
@@ -63,6 +65,7 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_OPERATOR_LOGICAL_AND]= "OPERATOR_LOGICAL_AND",
     [TT_OPERATOR_LOGICAL_OR]= "OPERATOR_LOGICAL_OR",
     [TT_OPERATOR_LOGICAL_XOR]= "OPERATOR_LOGICAL_XOR",
+    [TT_OPERATOR_TERNARY_CAPTURE]= "OPERATOR_TERNARY_CAPTURE",
     [TT_OPERATOR_EQ]= "OPERATOR_EQ",
     [TT_OPERATOR_NEQ]= "OPERATOR_NEQ",
     [TT_OPERATOR_LESS]= "OPERATOR_LESS",
@@ -94,6 +97,7 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_COLON]= "COLON",
     [TT_OPERATOR_POSTFIX_CARROT]= "CARROT",
     [TT_COMMA]= "COMMA",
+    [TT_DOLLAR]= "DOLLAR",
     [TT_OPERATOR_CAST]= "CAST(~)",
     [TT_OPERATOR_AMBIGUOUS_DOT]= "DOT",
     [TT_OPERATOR_AMBIGUOUS_EXCLAMATION]= "EXCLAMATION",
@@ -117,22 +121,22 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_ERROR]= "ERROR",
 };
 
-const char* token_type_string(const TokenType type) {
+const char* token_type_string(const MyTokenType type) {
     if (type > TT_COUNT) return "<<UNKNOWN TYPE>>";
 
     return TOKEN_TYPE_STRINGS[type];
 }
 
-static uint32_t cached_line= 0;
-static uint32_t cached_line_token_index= 0; // index into tokens
+static __thread uint32_t cached_line= 0;
+static __thread uint32_t cached_line_token_index= 0; // index into tokens
 
 static void get_line_and_col_info(
     const uint32_t target_buffer_index,
     size_t *line_out,
     size_t *col_out,
-    const TokenArray* tokens
+    const MyTokenSource source
 ) {
-    size_t start_buffer_index= Token_array_get(tokens, cached_line_token_index).buffer_index;
+    size_t start_buffer_index= source.data[cached_line_token_index].buffer_index;
     size_t start_token_index= cached_line_token_index;
     size_t start_line= cached_line;
     if (target_buffer_index < start_buffer_index) {
@@ -145,7 +149,7 @@ static void get_line_and_col_info(
     Token c_tok;
     size_t c_line= start_line;
     size_t c_line_buffer_index= start_buffer_index;
-    while (c_tok= Token_array_get(tokens, c_token_index),
+    while (c_tok= source.data[c_token_index],
         c_tok.buffer_index < target_buffer_index
     ) {
         c_token_index++;
@@ -175,19 +179,19 @@ void print_token_value(const Token t) {
 }
 
 // line and col can be -1 for unknown
-void print_token(const Token t, size_t line, size_t col, const TokenArray* tokens) {
+void print_token(const Token t, size_t line, size_t col, const MyTokenSource source) {
     printf("<TOKEN:%s@", token_type_string(t.type));
     if (line == -1 || col == -1) {
-        get_line_and_col_info(t.buffer_index, &line, &col, tokens);
+        get_line_and_col_info(t.buffer_index, &line, &col, source);
     }
 
     printf("%zu:%zu(%u)> ", line, col, t.buffer_index);
     print_token_value(t);
 }
 
-void print_all_tokens(const TokenArray* tokens) {
-    for (int i = 0; i < tokens->pos; ++i) {
-        print_token(Token_array_get(tokens, i), -1, -1, tokens);
+void print_all_tokens(const MyTokenSource source) {
+    for (size_t i = source.start_idx; i <= source.end_idx; ++i) {
+        print_token(source.data[i], -1, -1, source);
         newline();
     }
 }
