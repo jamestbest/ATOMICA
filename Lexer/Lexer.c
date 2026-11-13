@@ -79,12 +79,11 @@ LexRes lex(const char* file_path) {
 
     Token_array_add(&tokens, (Token){.type= TT_EOTS, .buffer_index= cursor});
 
-    MyTokenSource source= (MyTokenSource) {
+    const MyTokenSource source= (MyTokenSource) {
         .data= tokens.data,
         .current_idx= 0,
         .start_idx= 0,
         .end_idx= tokens.pos - 1,
-        .start_col= 0,
         .start_line= 0
     };
     print_all_tokens(source);

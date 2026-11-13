@@ -19,9 +19,9 @@
 
 __thread MyTokenSource source;
 
-NodeArray node_array;
+__thread NodeArray node_array;
 // if lhs or rhs are NODE_INDEX_NONE then there is no data in the extra_array
-NodeIndexArray extra_array;
+__thread NodeIndexArray extra_array;
 
 #define EXPECTED_NODE_COUNT 100
 // _Static_assert(EXPECTED_NODE_COUNT > 1, "");
@@ -48,7 +48,7 @@ NodeRes parse(MyTokenSource source_) {
 
         const NodeRes res= parse_top_level_statement();
         if (res.errcode != EC_SUCCESS) return NODE_FAIL(res.errcode);
-        print_node(res.index);
+        print_root_node(res.index);
 
         const NodeIndex ni= res.index;
         NodeIndex_array_add(&temp, ni);

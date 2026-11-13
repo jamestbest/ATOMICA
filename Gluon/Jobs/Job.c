@@ -35,3 +35,7 @@ Job create_parse_job(const MyTokenSource source, const size_t dependency_id) {
 Job create_ir_job(const NodeIndex source, const size_t dependency_id) {
     return create_job(JOB_IR_GEN, (JobData){.ir_gen_source= source}, dependency_id);
 }
+
+Job create_tls_job(const TokenArray source, const size_t dependency_id) {
+    return create_job(JOB_COLLECT_TLS, (JobData){.tls_source= source}, dependency_id);
+}

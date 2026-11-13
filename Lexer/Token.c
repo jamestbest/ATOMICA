@@ -130,6 +130,11 @@ const char* token_type_string(const MyTokenType type) {
 static __thread uint32_t cached_line= 0;
 static __thread uint32_t cached_line_token_index= 0; // index into tokens
 
+void set_token_cache(size_t line, size_t token_index) {
+    cached_line= line;
+    cached_line_token_index= token_index;
+}
+
 static void get_line_and_col_info(
     const uint32_t target_buffer_index,
     size_t *line_out,
@@ -140,9 +145,9 @@ static void get_line_and_col_info(
     size_t start_token_index= cached_line_token_index;
     size_t start_line= cached_line;
     if (target_buffer_index < start_buffer_index) {
-        start_buffer_index= 0;
-        start_line= 1;
-        start_token_index= 0;
+        start_buffer_index= source.data[source.start_idx].buffer_index;
+        start_line= source.start_line;
+        start_token_index= source.start_idx;
     }
 
     size_t c_token_index= start_token_index;

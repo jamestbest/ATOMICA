@@ -160,7 +160,7 @@ typedef enum {
 
     TT_DOLLAR, // $
 
-    TT_HASH, // #
+    TT_HASH, // # // todo: change to all TT_DIR_*
 
     TT_LIT_INT,
     TT_LIT_FLOAT,
@@ -189,7 +189,6 @@ typedef struct {
     uint32_t current_idx;
     uint32_t end_idx; // inclusive
     uint32_t start_line;
-    uint32_t start_col;
 } MyTokenSource;
 
 ARRAY_PROTO(Token, Token)
@@ -198,6 +197,7 @@ const char* token_type_string(MyTokenType type);
 void print_token(Token t, size_t line, size_t col, MyTokenSource source);
 void print_token_value(Token t);
 void print_all_tokens(MyTokenSource source);
+void set_token_cache(size_t line, size_t token_index);
 
 #define PRINT_TOKEN(t) print_token(t, -1, -1, source)
 

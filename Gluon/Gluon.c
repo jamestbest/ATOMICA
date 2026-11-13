@@ -4,10 +4,13 @@
 
 #include "Gluon.h"
 
+#include <stdio.h>
+
 #include "Error.h"
 #include "Jobs/Job.h"
 #include "Lexer/Lexer.h"
 #include "Parser/Parser.h"
+#include "Parser/TLSCollection/TLSPass.h"
 
 // active todos
 static JobQB jobs;
@@ -46,8 +49,12 @@ static void post_job(const Job job) {
     check_job_dependencies(job);
     switch (job.type) {
         case JOB_LEX: {
-            const Job next_job= create_parse_job(job.result.lex_result, NO_DEPENDENCY);
+            const Job next_job= create_tls_job(job.result.lex_result, NO_DEPENDENCY);
             add_job(next_job);
+            break;
+        }
+        case JOB_COLLECT_TLS: {
+            printf("Finished collecting tls's.\n");
             break;
         }
         case JOB_PARSE: {
@@ -65,20 +72,19 @@ static void post_job(const Job job) {
 static void run_job(Job* job) {
     switch (job->type) {
         case JOB_LEX: {
-            LexRes res= lex(job->data.lex_source);
+            const LexRes res= lex(job->data.lex_source);
             if (res.errcode != EC_SUCCESS) job->state= JS_ERROR;
-            MyTokenSource source= (MyTokenSource) {
-                .data= res.tokens.data,
-                .current_idx= 0,
-                .start_idx= 0,
-                .end_idx= res.tokens.pos - 1,
-                .start_col= 0,
-                .start_line= 0
-            };
-            job->result.lex_result= source;
+            job->result.lex_result= res.tokens;
+            break;
+        }
+        case JOB_COLLECT_TLS: {
+            const int res= collect_tls(job->data.tls_source);
+            if (res != EC_SUCCESS) job->state= JS_ERROR;
             break;
         }
         case JOB_PARSE: {
+            set_token_cache(job->data.parse_source.start_line, job->data.parse_source.start_idx);
+
             const NodeRes res= parse(job->data.parse_source);
             if (res.errcode != EC_SUCCESS) job->state= JS_ERROR;
             job->result.parse_result= res.index;

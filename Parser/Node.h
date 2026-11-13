@@ -290,12 +290,12 @@ typedef struct {
     NodeIndexArray rhs;
 } NodeArray;
 
-extern NodeArray node_array;
-extern NodeIndexArray extra_array;
+extern __thread NodeArray node_array;
+extern __thread NodeIndexArray extra_array;
 extern __thread MyTokenSource source;
 
 const char* node_type_string(NodeType type);
-void print_node(NodeIndex ni);
+void print_root_node(NodeIndex ni);
 
 #define TOKEN_AS_NODE_INDEX(token) (*(NodeIndex*)&token)
 #define NODE_INDEX_AS_TOKEN(index) (*(Token*)&index)

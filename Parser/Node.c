@@ -4,6 +4,7 @@
 
 #include "Node.h"
 
+#include <pthread.h>
 #include <stdio.h>
 
 #include "SharedParsing.h"
@@ -18,7 +19,10 @@ typedef enum {
 static uint64_t npv_buffer[10];
 static uint32_t npv_buffer_pos;
 
+pthread_mutex_t print_lock;
+
 static void print_token_as_node(Token tok);
+static void print_node(NodeIndex ni);
 
 static NodePrintingValue npv_buffer_get(size_t idx) {
     const uint32_t x= idx / 32;
@@ -193,6 +197,12 @@ static void print_token_as_node(const Token tok) {
     PRINT_TOKEN(tok);
 
     printf("\n");
+}
+
+void print_root_node(const NodeIndex ni) {
+    pthread_mutex_lock(&print_lock);
+    print_node(ni);
+    pthread_mutex_unlock(&print_lock);
 }
 
 void print_node(const NodeIndex ni) {

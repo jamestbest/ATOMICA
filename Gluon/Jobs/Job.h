@@ -13,6 +13,7 @@
 
 typedef enum {
     JOB_LEX,
+    JOB_COLLECT_TLS,
     JOB_PARSE,
     JOB_IR_GEN,
     JOB_TIR_GEN,
@@ -20,12 +21,16 @@ typedef enum {
 
 typedef union {
     const char* lex_source;
+    TokenArray tls_source;
     MyTokenSource parse_source;
     NodeIndex ir_gen_source;
 } JobData;
 
+
+typedef void* UNUSED;
 typedef union {
-    MyTokenSource lex_result;
+    TokenArray lex_result;
+    UNUSED tls_result;
     NodeIndex parse_result;
 } JobResult;
 
@@ -57,5 +62,6 @@ Job create_job(JobType type, JobData data, size_t dependency_id);
 Job create_lex_job(const char* source);
 Job create_parse_job(MyTokenSource source, size_t dependency_id);
 Job create_ir_job(NodeIndex source, size_t dependency_id);
+Job create_tls_job(TokenArray source, size_t dependency_id);
 
 #endif //ATOMICA_JOB_H

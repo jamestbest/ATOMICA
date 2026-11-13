@@ -5,7 +5,11 @@
 #include "Lexer/Token.h"
 #include "Parser/Parser.h"
 
+extern pthread_mutex_t print_lock;
+
 int main(void) {
+    pthread_mutex_init(&print_lock, NULL);
+
     return orchestrate("C:\\Users\\jamescoward\\CLionProjects\\ATOMICA\\atom_examples\\900.atm");
 
     // const LexRes lex_res= lex();

@@ -276,9 +276,6 @@ static NodeRes build_ternary_operator(const Token operator, NodeIndexArray* outp
 
 static NodeRes build_binary_operator(const Token operator, NodeIndexArray* output_s) {
     if (output_s->pos < 2) {
-        printf("-----\n");
-        print_node(NodeIndex_array_get(output_s, 0));
-        fflush(stdout);
         parse_error("Tried to form a binary operator, but there are only one or fewer operands on the stack.\nOperator: ");
         PRINT_TOKEN(operator);
         newline();
