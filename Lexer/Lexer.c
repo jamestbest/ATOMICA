@@ -13,6 +13,7 @@
 #include "Token.h"
 
 #include "shared/Array.h"
+#include "Logger/Logger.h"
 
 #define LEX_SUCC(x) (LexRes){.tokens= x, .errcode= EC_SUCCESS}
 #define LEX_FAIL (LexRes){.errcode= EC_FAIL}
@@ -28,28 +29,8 @@ static bool is_numeric_base(uint32_t character, uint8_t base);
 static bool is_alpha_numeric(uint32_t character);
 static Token lex_string();
 
-static int read_file_into_buffer(const char* file_path, Buffer* out) {
-    FILE* file= fopen(file_path, "r");
-    if (!file) return EXIT_FAILURE;
-
-    assert(fseek(file, 0, SEEK_END) == 0);
-    const long file_size= ftell(file);
-    assert(fseek(file, 0, SEEK_SET) == 0);
-
-    out->data= malloc(file_size + 1);
-    if (!out->data) assert(false);
-
-    const size_t bytes_read= fread(out->data, 1, file_size, file);
-    out->data[bytes_read]= '\0';
-
-    out->size= bytes_read;
-    out->pos= bytes_read;
-
-    return EXIT_SUCCESS;
-}
-
 static Buffer buff;
-static size_t cursor;
+static __thread size_t cursor;
 
 ARRAY_ADD(Token, Token)
 
@@ -70,7 +51,7 @@ LexRes lex(const char* file_path) {
         const Token t= lex_token();
         if (t.type == TT_IGNORE) continue;
         if (t.type == TT_ERROR) {
-            fprintf(stderr, "lexer found error.\n");
+            logger_error("lexer found error.\n");
             return LEX_FAIL;
         }
 
@@ -229,7 +210,7 @@ Token lex_token() {
                 consume();
                 break;
             }
-            res= create_simple_token(TT_OPERATOR_AMBIGUOUS_BITWISE_OR);
+            res= create_simple_token(TT_OPERATOR_BINARY_BITWISE_OR);
             break;
         }
 
@@ -320,7 +301,7 @@ lex_cont:
         return lex_string();
     }
 
-    printf("Did not match on character '%c' v: %d.\n", current(), current());
+    logger_fadd("Did not match on character '%c' v: %d.\n", current(), current());
 
     return (Token){.type= TT_ERROR};
 }
@@ -467,7 +448,7 @@ static Token lex_string() {
 
     while (current() != '"') {
         if (current() == '\n') {
-            perror("Strings must be on a single line. Thanks\n");
+            logger_error("Strings must be on a single line. Thanks\n");
             return create_simple_token(TT_ERROR);
         }
         consume();

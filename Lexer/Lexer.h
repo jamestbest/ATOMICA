@@ -7,12 +7,7 @@
 #include <stdint.h>
 
 #include "Token.h"
-
-typedef struct {
-     uint8_t* data;
-     size_t size;
-     size_t pos;
-} Buffer;
+#include "shared/Buffer.h"
 
 typedef struct {
      int errcode;

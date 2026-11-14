@@ -8,6 +8,7 @@
 
 #include "Lexer.h"
 #include "shared/String.h"
+#include "Logger/Logger.h"
 
 static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_LBRACE]= "LBRACE",
@@ -122,7 +123,7 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
 };
 
 const char* token_type_string(const MyTokenType type) {
-    if (type > TT_COUNT) return "<<UNKNOWN TYPE>>";
+    if (type >= TT_COUNT) return "<<UNKNOWN TYPE>>";
 
     return TOKEN_TYPE_STRINGS[type];
 }
@@ -178,26 +179,27 @@ void print_token_value(const Token t) {
     if (*start != '\n') {
         const uint8_t save= *end;
         *end= '\0';
-        printf("%s", (const char*)start);
+        logger_fadd("%s", (const char*)start);
         *end= save;
     }
 }
 
 // line and col can be -1 for unknown
 void print_token(const Token t, size_t line, size_t col, const MyTokenSource source) {
-    printf("<TOKEN:%s@", token_type_string(t.type));
+    logger_fadd("<TOKEN:%s@", token_type_string(t.type));
     if (line == -1 || col == -1) {
         get_line_and_col_info(t.buffer_index, &line, &col, source);
     }
 
-    printf("%zu:%zu(%u)> ", line, col, t.buffer_index);
+    logger_fadd("%zu:%zu(%u)> ", line, col, t.buffer_index);
     print_token_value(t);
 }
 
 void print_all_tokens(const MyTokenSource source) {
     for (size_t i = source.start_idx; i <= source.end_idx; ++i) {
         print_token(source.data[i], -1, -1, source);
-        newline();
+        logger_newline();
     }
+    logger_commit();
 }
 

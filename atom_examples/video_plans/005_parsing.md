@@ -15,8 +15,6 @@ or not...
    - x := func()?
    - y++
 
-todo: make parens req for for, while, ifs
-
 detecting unary operators
 - probably by using expected?
 - doing this before update expected

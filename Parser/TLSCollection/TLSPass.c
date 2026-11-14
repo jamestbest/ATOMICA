@@ -8,6 +8,7 @@
 
 #include "Gluon/Gluon.h"
 #include "Lexer/Token.h"
+#include "Logger/Logger.h"
 
 static bool is_valid_tls_start(const MyTokenType type) {
     switch (type) {
@@ -102,8 +103,14 @@ int collect_tls(const TokenArray tokens_) {
                 .start_line= start_line
             };
 
-            printf("Creating parse job for tls with %zu tokens starting line %zu.\n", end - start + 1, start_line);
+            logger_printf("Creating parse job for tls with %zu tokens starting line %zu.\n", end - start + 1, start_line);
             add_job(create_parse_job(source, NO_DEPENDENCY));
+        } else {
+            if (t.type == TT_EOTS) break;
+
+            logger_error("Found token at start of tls that is not a valid start");
+            print_token(t, -1, -1, source);
+            logger_commit();
         }
     }
 

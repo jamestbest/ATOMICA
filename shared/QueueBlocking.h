@@ -12,9 +12,8 @@
 #ifdef _WIN32
 #include <windows.h>
 #define sem_t HANDLE
-
 #else
-#include <sys/sem.h>
+#include <semaphore.h>
 #endif
 
 typedef struct {

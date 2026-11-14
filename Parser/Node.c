@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "SharedParsing.h"
+#include "Logger/Logger.h"
 
 typedef enum {
     NPV_LAST_CHILD, // `-
@@ -16,10 +17,8 @@ typedef enum {
     NPV_NONE, //
 } NodePrintingValue;
 
-static uint64_t npv_buffer[10];
-static uint32_t npv_buffer_pos;
-
-pthread_mutex_t print_lock;
+static __thread uint64_t npv_buffer[10];
+static __thread uint32_t npv_buffer_pos;
 
 static void print_token_as_node(Token tok);
 static void print_node(NodeIndex ni);
@@ -54,10 +53,10 @@ static void print_node_prefix() {
         const NodePrintingValue value= npv_buffer_get(i);
 
         switch (value) {
-            case NPV_LAST_CHILD: printf("`-"); break;
-            case NPV_CHILD: printf("|-"); break;
-            case NPV_PASS: printf("| "); break;
-            case NPV_NONE: printf("  "); break;
+            case NPV_LAST_CHILD: logger_fadd("`-"); break;
+            case NPV_CHILD: logger_fadd("|-"); break;
+            case NPV_PASS: logger_fadd("| "); break;
+            case NPV_NONE: logger_fadd("  "); break;
             default:
                 assert(false);
         }
@@ -196,13 +195,12 @@ static void print_token_as_node(const Token tok) {
     print_node_prefix();
     PRINT_TOKEN(tok);
 
-    printf("\n");
+    logger_fadd("\n");
 }
 
 void print_root_node(const NodeIndex ni) {
-    pthread_mutex_lock(&print_lock);
     print_node(ni);
-    pthread_mutex_unlock(&print_lock);
+    logger_commit();
 }
 
 void print_node(const NodeIndex ni) {
@@ -218,12 +216,10 @@ void print_node(const NodeIndex ni) {
 
     const NodeType type= GET_TYPE(ni);
 
-    printf("<%s:", node_type_string(type));
+    logger_fadd("<%s:", node_type_string(type));
     const Token tok= GET_TOKEN(ni);
     PRINT_TOKEN(tok);
-    printf(" ");
-
-    fflush(stdout);
+    logger_fadd(" ");
 
     switch (type) {
         case NT_ROOT:
@@ -233,11 +229,11 @@ void print_node(const NodeIndex ni) {
             if (extra_start == NODE_INDEX_NONE ||
                 extra_end == NODE_INDEX_NONE
             ) {
-                printf("No children>\n");
+                logger_fadd("No children>\n");
                 break;
             }
 
-            printf(">\n");
+            logger_fadd(">\n");
             for (size_t i = extra_start; i < extra_end + 1; ++i) {
                 const NodeIndex c_ni= NodeIndex_array_get(&extra_array, i);
                 print_child_ambiguous(c_ni, i == extra_end);
@@ -246,20 +242,20 @@ void print_node(const NodeIndex ni) {
         }
         case NT_VAR_DECL:
         case NT_CONST_DECL: {
-            printf("Ident= ");
+            logger_fadd("Ident= ");
             print_token_value(tok);
 
             const NodeIndex lhs= GET_LHS(ni);
             if (lhs == NODE_INDEX_NONE) {
-                printf(" (inferred type)");
+                logger_fadd(" (inferred type)");
             }
 
             const NodeIndex rhs= GET_RHS(ni);
             if (rhs == NODE_INDEX_NONE) {
-                printf(" (no value)");
+                logger_fadd(" (no value)");
             }
 
-            printf(">\n");
+            logger_fadd(">\n");
 
             if (lhs != NODE_INDEX_NONE) {
                 print_child_ambiguous(GET_LHS(ni), rhs == NODE_INDEX_NONE);
@@ -272,7 +268,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_LAMBDA: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(header, body)
 
@@ -281,7 +277,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_LAMBDA_HEADER: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(start, end)
 
@@ -302,7 +298,7 @@ void print_node(const NodeIndex ni) {
         case NT_PARAM: {
             UNWRAP_LR(return_type, default_value)
 
-            printf(">\n");
+            logger_fadd(">\n");
 
             print_child_ambiguous(return_type, default_value == NODE_INDEX_NONE);
 
@@ -313,16 +309,16 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_TYPED_IDENTIFIER: {
-            printf("Ident= ");
+            logger_fadd("Ident= ");
             print_token_value(tok);
 
-            printf(">\n");
+            logger_fadd(">\n");
 
             print_last_child(GET_LHS(ni));
             break;
         }
         case NT_TYPE_ERRORABLE: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(error_as_index, return_type)
             const Token error_token= NODE_INDEX_AS_TOKEN(error_as_index);
@@ -335,7 +331,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_TYPE_ARRAY_STATIC: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(inner_type, size)
 
@@ -348,7 +344,7 @@ void print_node(const NodeIndex ni) {
         case NT_TYPE_ARRAY_LINK:
         case NT_TYPE_ARRAY_POOL:
         case NT_TYPE_ARRAY_SLICE: {
-            printf(">\n");
+            logger_fadd(">\n");
             UNWRAP_L(inner_type)
 
             print_last_child(inner_type);
@@ -358,7 +354,7 @@ void print_node(const NodeIndex ni) {
         case NT_TYPE_NULLABLE:
         case NT_TYPE_POINTER:
         case NT_TYPE_MARKED: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(inner_type)
 
@@ -368,11 +364,11 @@ void print_node(const NodeIndex ni) {
         }
         case NT_TYPE_BASE:
         case NT_TYPE_LINK: {
-            printf(">\n");
+            logger_fadd(">\n");
             break;
         }
         case NT_TYPE_CONST: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(inner_type)
 
@@ -384,7 +380,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_TYPE_DATA: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(param_fields, fields);
 
@@ -400,7 +396,7 @@ void print_node(const NodeIndex ni) {
         case NT_DATA_PARAMETERISED_FIELDS: {
             UNWRAP_LR(start, end);
 
-            printf(">\n");
+            logger_fadd(">\n");
 
             if (start == NODE_INDEX_NONE ||
                 end == NODE_INDEX_NONE
@@ -415,10 +411,10 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_DATA_FIELD: {
-            printf("Ident= ");
+            logger_fadd("Ident= ");
             print_token_value(tok);
 
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(type, default_value)
 
@@ -431,10 +427,10 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_DATA_VARIANT: {
-            printf("Ident= ");
+            logger_fadd("Ident= ");
             print_token_value(tok);
 
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(start, end);
             const NodeIndex default_value= end;
@@ -455,11 +451,11 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_LITERAL: {
-            printf(">\n");
+            logger_fadd(">\n");
             break;
         }
         case NT_EXPR_LITERAL_ARRAY: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(start, end)
 
@@ -475,7 +471,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_OPERATOR_BINARY: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(left, right)
 
@@ -485,7 +481,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_OPERATOR_UNARY: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(left);
             print_last_child(left);
@@ -493,7 +489,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_OPERATOR_TERNARY: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(start)
             print_child(NodeIndex_array_get(&extra_array, start));
@@ -503,14 +499,14 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_VARIABLE: {
-            printf(">\n");
+            logger_fadd(">\n");
             break;
         }
         case NT_EXPR_FUNC_CALL: {
             const NodeFuncCall node= get_node_func_call(ni);
 
-            printf("args: %zu ", node.arg_count);
-            printf(">\n");
+            logger_fadd("args: %zu ", node.arg_count);
+            logger_fadd(">\n");
 
             for (size_t i = 0; i < node.arg_count; ++i) {
                 const size_t arg_idx= node.arg_start + i;
@@ -522,7 +518,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_ARRAY_INDEX: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(expr)
 
@@ -536,7 +532,7 @@ void print_node(const NodeIndex ni) {
         case NT_EXPR_BREAK_ERROR:
         case NT_EXPR_YIELD:
         case NT_EXPR_YIELD_ERROR: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(expr)
 
@@ -547,11 +543,11 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_EXPR_CONTINUE: {
-            printf(">\n");
+            logger_fadd(">\n");
             break;
         }
         case NT_IMPORT_STATEMENT: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(string_as_index)
             const Token string_token= NODE_INDEX_AS_TOKEN(string_as_index);
@@ -561,7 +557,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_IF_EXPR: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             const NodeIf node= get_node_if(ni);
 
@@ -574,7 +570,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_ELSE_EXPR: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(output)
 
@@ -584,7 +580,7 @@ void print_node(const NodeIndex ni) {
         }
         case NT_DO_WHILE_EXPR:
         case NT_WHILE_EXPR: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(cond, output)
 
@@ -594,7 +590,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_FOR_EACH_EXPR: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(start, end);
 
@@ -622,7 +618,7 @@ void print_node(const NodeIndex ni) {
             break;
         }
         case NT_FOR_EXPR: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(start);
 
@@ -652,19 +648,19 @@ void print_node(const NodeIndex ni) {
         }
         case NT_EXPR_DEFER:
         case NT_EXPR_DEFER_ERROR:
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_L(statement)
 
             print_last_child(statement);
             break;
         case NT_IDENTIFIER: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             break;
         }
         case NT_IDENTIFIER_LIST: {
-            printf(">\n");
+            logger_fadd(">\n");
 
             UNWRAP_LR(start, end);
 
@@ -679,13 +675,13 @@ void print_node(const NodeIndex ni) {
             UNWRAP_LR(start, end)
             const MyTokenSource token_source= *(MyTokenSource*)NodeIndex_array_ptr(&extra_array, start);
             const size_t token_count= token_source.end_idx - token_source.start_idx + 1;
-            printf("(%zu token%s) ", token_count, token_count > 1 ? "s": "");
-            printf(">\n");
+            logger_fadd("(%zu token%s) ", token_count, token_count > 1 ? "s": "");
+            logger_fadd(">\n");
 
             break;
         }
         case NT_IDENTIFIER_LITERAL: {
-            printf(">\n");
+            logger_fadd(">\n");
             break;
         }
         default:

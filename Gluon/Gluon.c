@@ -9,6 +9,7 @@
 #include "Error.h"
 #include "Jobs/Job.h"
 #include "Lexer/Lexer.h"
+#include "Logger/Logger.h"
 #include "Parser/Parser.h"
 #include "Parser/TLSCollection/TLSPass.h"
 
@@ -45,6 +46,10 @@ void check_job_dependencies(Job job) {
     pthread_mutex_unlock(&dependent_jobs.mutex);
 }
 
+static void pre_job(const Job job) {
+
+}
+
 static void post_job(const Job job) {
     check_job_dependencies(job);
     switch (job.type) {
@@ -54,7 +59,7 @@ static void post_job(const Job job) {
             break;
         }
         case JOB_COLLECT_TLS: {
-            printf("Finished collecting tls's.\n");
+            logger_print("Finished collecting tls's.\n");
             break;
         }
         case JOB_PARSE: {
@@ -98,9 +103,13 @@ static void run_job(Job* job) {
     }
 }
 
-void* worker_thread(void* arg) {
+static void* worker_thread(void* arg) {
+    logger_thread_init();
+
     while (true) {
         Job job= Job_qb_pop(&jobs);
+
+        pre_job(job);
 
         run_job(&job);
 

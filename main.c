@@ -3,24 +3,23 @@
 #include "Gluon/Gluon.h"
 #include "Lexer/Lexer.h"
 #include "Lexer/Token.h"
+#include "Logger/Logger.h"
 #include "Parser/Parser.h"
 
-extern pthread_mutex_t print_lock;
-
 int main(void) {
-    pthread_mutex_init(&print_lock, NULL);
+    logger_init();
 
-    return orchestrate("C:\\Users\\jamescoward\\CLionProjects\\ATOMICA\\atom_examples\\900.atm");
+    return orchestrate("/home/jamestbest/ATOMICA/atom_examples/900.atm");
 
     // const LexRes lex_res= lex();
-    // printf("LEXRES: %d\n", lex_res.errcode);
+    // logger_printf("LEXRES: %d\n", lex_res.errcode);
     //
     // if (lex_res.errcode != EC_SUCCESS) {
     //     return lex_res.errcode;
     // }
     //
     // const NodeRes parse_res= parse();
-    // printf("PARSERES: %d\n", parse_res.errcode);
+    // logger_printf("PARSERES: %d\n", parse_res.errcode);
 
     return 0;
 }

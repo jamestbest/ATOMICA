@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "Logger/Logger.h"
 #include "Parser/Parser.h"
 #include "Parser/SharedParsing.h"
 #include "Parser/Parserr/Parserr.h"
@@ -25,7 +26,6 @@ typedef enum {
 } EXPECTING;
 
 static bool check_and_update_expectations(const MyTokenType type, EXPECTING* expecting) {
-    // todo: do
     // if expecting operand like do we have operand like next
     //  etc
 
@@ -81,7 +81,6 @@ static ParseFunc parse_functions[]= {
 };
 
 bool is_valid_expr_start(const MyTokenType type) {
-    // TT_KEYWORD_IMPORT // todo: think about import being an expression; probably not
     if (is_prefix_operator(type)) return true;
 
     switch (type) {
@@ -133,7 +132,6 @@ bool is_valid_qe_expr_start(const MyTokenType type) {
     return is_valid_expr_start(type) || type == TT_OPERATOR_AMBIGUOUS_BITWISE_OR;
 }
 
-// todo do the prefix and postfix and binary versions
 #define PRECEDENCE_OFFSET (TT_INTERNAL_OPERATOR_START - 1)
 static uint8_t PRECEDENCE[TT_INTERNAL_OPERATOR_END - TT_INTERNAL_OPERATOR_START + 1]= {
     [TT_OPERATOR_POSTFIX_PLUS_PLUS - PRECEDENCE_OFFSET]= 1,
@@ -236,7 +234,7 @@ static NodeRes build_unary_operator(const Token operator, NodeIndexArray* output
     if (output_s->pos < 1) {
         parse_error("Tried to form a unary operator, but there are no operands on the stack.\nOperator: ");
         PRINT_TOKEN(operator);
-        newline();
+        logger_newline();
         return NODE_FAIL(EC_FAIL);
     }
 
@@ -250,7 +248,7 @@ static NodeRes build_ternary_operator(const Token operator, NodeIndexArray* outp
     if (output_s->pos < 3) {
         parse_error("Tried to form a ternary operator, but there are less than three operands on the stack.\nOperator:");
         PRINT_TOKEN(operator);
-        newline();
+        logger_newline();
         return NODE_FAIL(EC_FAIL);
     }
 
@@ -278,7 +276,7 @@ static NodeRes build_binary_operator(const Token operator, NodeIndexArray* outpu
     if (output_s->pos < 2) {
         parse_error("Tried to form a binary operator, but there are only one or fewer operands on the stack.\nOperator: ");
         PRINT_TOKEN(operator);
-        newline();
+        logger_newline();
         return NODE_FAIL(EC_FAIL);
     }
 
@@ -290,7 +288,6 @@ static NodeRes build_binary_operator(const Token operator, NodeIndexArray* outpu
 }
 
 static NodeRes build_operator(const Token operator, NodeIndexArray* output_s) {
-    // todo: support non binary operators
     if (is_binary_operator(operator.type)) return build_binary_operator(operator, output_s);
     if (is_unary_operator(operator.type)) return build_unary_operator(operator, output_s);
     if (is_ternary_operator(operator.type)) return build_ternary_operator(operator, output_s);
@@ -582,7 +579,7 @@ NodeRes shunt(bool allow_trailing_parens) {
                     if (!allow_trailing_parens) {
                         parse_error("Found mismatching parenthesis in expression.\nExtra right paren: ");
                         PRINT_TOKEN(r_paren_tok);
-                        newline();
+                        logger_newline();
                         return NODE_FAIL(EC_FAIL);
                     }
                     end= true;
@@ -604,7 +601,7 @@ NodeRes shunt(bool allow_trailing_parens) {
                     if (!allow_trailing_parens) {
                         parse_error("Found mismatching parenthesis in expression.\nExtra right paren: ");
                         PRINT_TOKEN(r_paren_tok);
-                        newline();
+                        logger_newline();
                         return NODE_FAIL(EC_FAIL);
                     }
                     end= true;
@@ -630,7 +627,7 @@ NodeRes shunt(bool allow_trailing_parens) {
         if (op.type == TT_LPAREN) {
             parse_error("Mismatched parenthesis, got an lparen without rparen to match.\nLParen: ");
             PRINT_TOKEN(op);
-            newline();
+            logger_newline();
             return NODE_FAIL(EC_FAIL);
         }
 

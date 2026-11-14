@@ -5,6 +5,6 @@
 #ifndef ATOMICA_MATH_H
 #define ATOMICA_MATH_H
 
-#define MAX(x, y) (x > y ? x : y)
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
 
 #endif //ATOMICA_MATH_H

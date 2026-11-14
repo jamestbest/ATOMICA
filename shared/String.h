@@ -5,6 +5,6 @@
 #ifndef ATOMICA_STRING_H
 #define ATOMICA_STRING_H
 
-void newline();
+// void newline();
 
 #endif //ATOMICA_STRING_H

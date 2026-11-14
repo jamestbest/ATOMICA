@@ -9,13 +9,13 @@
 #include "ParserInternal.h"
 #include "SharedParsing.h"
 #include "Lexer/Token.h"
+#include "Logger/Logger.h"
 #include "Parserr/Parserr.h"
 #include "shared/String.h"
 #include "Shunt/ShuntingYard.h"
 
 // todo: _add functions return u64, but we store u32s
 // todo: zero init node_array or write INDEX_NONE (don't do that)
-// todo: eat delimiters in braces
 
 __thread MyTokenSource source;
 
@@ -34,7 +34,7 @@ NodeRes parse(MyTokenSource source_) {
     source= source_;
     source.current_idx= source.start_idx;
 
-    setup_node_array();
+    setup_node_array();    // todo: this will corrupt results that are returned
     extra_array= NodeIndex_array_construct(EXPECTED_NODE_COUNT);
     extra_array.pos++;
 
@@ -70,7 +70,7 @@ static NodeRes parse_top_level_statement() {
         default: {
             parse_error("Expected variable declaration or import statement at top level of program. Found: ");
             PRINT_TOKEN(t);
-            newline();
+            logger_newline();
             return NODE_FAIL(EC_FAIL);
         }
     }
@@ -105,7 +105,6 @@ static NodeRes parse_variable_declaration() {
     // buff: Buffer'
     // cursor: n8
     // could be const or var; :: :=
-    // todo support : const=
     //     - const
     //     - '      (maybe)
     //     - ?      (probably not)
@@ -757,7 +756,7 @@ NodeRes parse_lambda_header() {
         NodeRes type_res= parse_type();
         PROP_FAIL(type_res);
 
-        NodeIndex param_index= node_create(NT_PARAM, ident);
+        const NodeIndex param_index= node_create(NT_PARAM, ident);
         SET_LHS(type_res.index, param_index);
         SET_RHS(NODE_INDEX_NONE, param_index);
 

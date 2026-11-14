@@ -55,8 +55,7 @@ my_data := my_func()? |err| {
     ret! err
 }
 
-// todo: think
-my_data : MyData = my_func()! | a, b | {
+my_data: i4 = my_func()! | a, b | {
     a + b
 }
 

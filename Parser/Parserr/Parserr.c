@@ -8,12 +8,13 @@
 #include <stdio.h>
 
 #include "Lexer/Token.h"
+#include "Logger/Logger.h"
 
 NodeRes parse_error(const char* message, ...) {
     va_list args;
     va_start(args, message);
 
-    vprintf(message, args);
+    logger_vfadd(message, args);
 
     va_end(args);
 
@@ -21,14 +22,14 @@ NodeRes parse_error(const char* message, ...) {
 }
 
 NodeRes unexpected(MyTokenType expected_type, Token received, char* message, ...) {
-    printf("Expected token type '%s' but received: ", token_type_string(expected_type));
+    logger_fadd("Expected token type '%s' but received: ", token_type_string(expected_type));
     PRINT_TOKEN(received);
-    printf(" In context: ");
+    logger_fadd(" In context: ");
 
     va_list args;
     va_start(args, message);
 
-    vprintf(message, args);
+    logger_vfadd(message, args);
 
     va_end(args);
 

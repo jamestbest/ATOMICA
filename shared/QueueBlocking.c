@@ -6,6 +6,10 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "Math.h"
 
 QueueB qb_construct(size_t max_elements, size_t element_size) {
     void* data= malloc(
@@ -13,6 +17,7 @@ QueueB qb_construct(size_t max_elements, size_t element_size) {
     );
     if (!data) assert(false);
 
+#ifdef _WIN32
     sem_t sem= CreateSemaphoreA(
         NULL,
         0,
@@ -23,6 +28,11 @@ QueueB qb_construct(size_t max_elements, size_t element_size) {
     if (sem == NULL) {
         assert(false);
     }
+#else
+    sem_t sem;
+    const int sem_init_res= sem_init(&sem, 0, 0);
+    assert(sem_init_res == 0);
+#endif
 
     QueueB res= (QueueB) {
         .data= data,
@@ -76,7 +86,7 @@ bool qb_resize_no_lock(QueueB* q, const size_t new_max_elements) {
 void qb_add(QueueB* q, void* elem) {
     pthread_mutex_lock(&q->mutex);
     if (q->current_size >= q->max_size) {
-        const size_t new_size= max(QUEUE_MIN, q->max_size << 1);
+        const size_t new_size= MAX(QUEUE_MIN, q->max_size << 1);
         if (!qb_resize_no_lock(q, new_size)) assert(false);
     }
 
@@ -87,11 +97,19 @@ void qb_add(QueueB* q, void* elem) {
 
     pthread_mutex_unlock(&q->mutex);
 
+#ifdef _WIN32
     ReleaseSemaphore(q->sem, 1, NULL);
+#else
+    sem_post(&q->sem);
+#endif
 }
 
 void qb_pop(QueueB* q, void* res) {
+#ifdef _WIN32
     WaitForSingleObject(q->sem, INFINITE);
+#else
+    sem_wait(&q->sem);
+#endif
 
     pthread_mutex_lock(&q->mutex);
     assert(q->current_size != 0);
@@ -105,7 +123,11 @@ void qb_pop(QueueB* q, void* res) {
 
 void qb_destroy(QueueB* q) {
     if (pthread_mutex_destroy(&q->mutex) != 0) assert(false);
+#ifdef _WIN32
     if (CloseHandle(q->sem) != 0) assert(false);
+#else
+    sem_destroy(&q->sem);
+#endif
 
     q->current_size= 0;
     q->read_head= 0;

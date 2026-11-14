@@ -7,6 +7,8 @@ include_directories(
     .
 )
 
+add_compile_options(-g)
+
 #add_link_options(-fsanitize=undefined)
 #add_compile_options(-fsanitize=undefined)
 
@@ -40,7 +42,11 @@ add_executable(ATOMICA main.c
         shared/ArrayG.c
         shared/ArrayG.h
         Gluon/Gluon.c
-        Gluon/Gluon.h)
+        Gluon/Gluon.h
+        shared/Buffer.c
+        shared/Buffer.h
+        Logger/Logger.c
+        Logger/Logger.h)
 
 
 add_executable(EXAMPLES_300

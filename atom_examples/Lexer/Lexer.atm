@@ -183,7 +183,7 @@ lex_token :: () : !Token? {
     if is_numeric(c) ret lex_numeric_literal()!
     if c == '"' ret lex_string()!
     
-    printf("Did not match on character '%' v: %.\n", c as byte, c);
+    logger_printf("Did not match on character '%' v: %.\n", c as byte, c);
     
     ret null
 }
@@ -371,7 +371,7 @@ print_all_tokens :: (): void {
         if  !is_nl {
             save: byte= '\0'
             save <> buff.d[t_end]
-            printf("%", >buff.d[t.index])
+            logger_printf("%", >buff.d[t.index])
             buff.d[t_end]= end
         }
 

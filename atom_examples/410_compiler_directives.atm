@@ -4,8 +4,8 @@
 // stolen from jai, I think it's very cool
 #check_func <target_func> <func_to_run>
 
-printf :: (format: string, ...)
-check_printf :: (argc: n2, arg_types: []Type, arg_values: []Any)
+logger_printf :: (format: string, ...)
+check_logger_printf :: (argc: n2, arg_types: []Type, arg_values: []Any)
 
 // something like check_type? or check_var?
 // or the compiler messages
