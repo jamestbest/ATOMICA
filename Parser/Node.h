@@ -10,6 +10,7 @@
 #include "shared/Array.h"
 #include "Error.h"
 #include "Lexer/Token.h"
+#include "Lexer/TokenSource.h"
 
 typedef uint32_t NodeIndex;
 #define NODE_INDEX_NONE 0
@@ -37,7 +38,7 @@ typedef enum {
     NT_IMPORT_STATEMENT,
         // token= import
         // lhs= string TOKEN
-        // rhs= NONE
+        // rhs= FileID file_id
 
     NT_IF_EXPR,
         // token= if

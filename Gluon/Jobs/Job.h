@@ -11,6 +11,8 @@
 #include "shared/QueueBlocking.h"
 #include "shared/ArrayG.h"
 
+typedef size_t FileID;
+
 typedef enum {
     JOB_LEX,
     JOB_COLLECT_TLS,
@@ -44,6 +46,7 @@ typedef enum {
 } JobState;
 
 typedef struct {
+    FileID file_id;
     size_t job_id;
     size_t dependency_id;
     JobType type;
@@ -52,16 +55,23 @@ typedef struct {
     JobState state;
 } Job;
 
+typedef struct {
+    size_t id;
+    JobType type;
+} JobSkeleton;
+
 QB_PROTO(Job, Job)
 ARRAY_PROTO(Job, Job)
 ARRAYG_PROTO(Job, Job)
+ARRAY_PROTO(JobSkeleton, JobSkeleton)
+ARRAYG_PROTO(JobSkeleton, JobSkeleton)
 
 #define NO_DEPENDENCY (0)
 
-Job create_job(JobType type, JobData data, size_t dependency_id);
-Job create_lex_job(const char* source);
-Job create_parse_job(MyTokenSource source, size_t dependency_id);
-Job create_ir_job(NodeIndex source, size_t dependency_id);
-Job create_tls_job(TokenArray source, size_t dependency_id);
+Job create_job(JobType type, JobData data, size_t dependency_id, FileID file_id);
+Job create_lex_job(const char* source, FileID file_id);
+Job create_parse_job(MyTokenSource source, size_t dependency_id, FileID file_id);
+Job create_ir_job(NodeIndex source, size_t dependency_id, FileID file_id);
+Job create_tls_job(TokenArray source, size_t dependency_id, FileID file_id);
 
 #endif //ATOMICA_JOB_H

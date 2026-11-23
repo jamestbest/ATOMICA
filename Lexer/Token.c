@@ -9,6 +9,7 @@
 #include "Lexer.h"
 #include "shared/String.h"
 #include "Logger/Logger.h"
+#include "Lexer/TokenSource.h"
 
 static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_LBRACE]= "LBRACE",
@@ -29,6 +30,7 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_KEYWORD_FOR]= "KEYWORD_FOR",
     [TT_KEYWORD_IF]= "KEYWORD_IF",
     [TT_KEYWORD_IMPORT]= "KEYWORD_IMPORT",
+    [TT_KEYWORD_EXPORT]= "KEYWORD_EXPORT",
     [TT_OPERATOR_PREFIX_MARK]= "KEYWORD_MARK",
     [TT_KEYWORD_RET]= "KEYWORD_RET",
     [TT_KEYWORD_TO]= "KEYWORD_TO",
@@ -80,7 +82,6 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_OPERATOR_ASSIGN_PLUS]= "OPERATOR_ASSIGN_PLUS",
     [TT_OPERATOR_ASSIGN_SUBTRACT]= "OPERATOR_ASSIGN_SUBTRACT",
     [TT_OPERATOR_BITWISE_AND]= "OPERATOR_BITWISE_AND",
-    [TT_OPERATOR_AMBIGUOUS_BITWISE_OR]= "OPERATOR_BITWISE_OR",
     [TT_OPERATOR_BITWISE_XOR]= "OPERATOR_BITWISE_XOR",
     [TT_OPERATOR_AMBIGUOUS_PLUS_PLUS]= "OPERATOR_PLUS_PLUS",
     [TT_OPERATOR_AMBIGUOUS_MINUS_MINUS]= "OPERATOR_MINUS_MINUS",
@@ -110,7 +111,8 @@ static const char* TOKEN_TYPE_STRINGS[TT_COUNT]= {
     [TT_OPERATOR_BINARY_QUESTION]= "QUESTION (BIN)",
     [TT_OPERATOR_BINARY_EXCLAMATION]= "EXCLAMATION (BIN)",
     [TT_OPERATOR_BINARY_SHIFT_RIGHT]= "SHIFT_RIGHT (BIN)",
-    [TT_HASH]= "HASH",
+    [TT_DIRECTIVE_INSERT]= "DIRECTIVE_INSERT",
+    [TT_DIRECTIVE_RUN]= "DIRECTIVE_RUN",
     [TT_LIT_INT]= "LIT_INT",
     [TT_LIT_FLOAT]= "LIT_FLOAT",
     [TT_LIT_STRING]= "LIT_STRING",
@@ -187,6 +189,11 @@ void print_token_value(const Token t) {
 // line and col can be -1 for unknown
 void print_token(const Token t, size_t line, size_t col, const MyTokenSource source) {
     logger_fadd("<TOKEN:%s@", token_type_string(t.type));
+    if (t.type == TT_EOTS) {
+        logger_fadd(">");
+        return;
+    }
+
     if (line == -1 || col == -1) {
         get_line_and_col_info(t.buffer_index, &line, &col, source);
     }

@@ -193,7 +193,7 @@ static void print_child_token_ambiguous(const Token tok, bool is_last) {
 
 static void print_token_as_node(const Token tok) {
     print_node_prefix();
-    PRINT_TOKEN(tok);
+    print_token(tok, -1, -1, source);
 
     logger_fadd("\n");
 }
@@ -218,7 +218,7 @@ void print_node(const NodeIndex ni) {
 
     logger_fadd("<%s:", node_type_string(type));
     const Token tok= GET_TOKEN(ni);
-    PRINT_TOKEN(tok);
+    print_token(tok, -1, -1, source);
     logger_fadd(" ");
 
     switch (type) {

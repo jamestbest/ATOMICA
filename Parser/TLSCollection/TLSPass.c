@@ -17,7 +17,8 @@ static bool is_valid_tls_start(const MyTokenType type) {
         case TT_KEYWORD_IMPORT:
             return true;
 
-        case TT_HASH:
+        case TT_DIRECTIVE_INSERT:
+        case TT_DIRECTIVE_RUN:
             return true;
 
         case TT_NEWLINE:
@@ -51,10 +52,11 @@ static bool is_delimiter(const MyTokenType type) {
     return type == TT_NEWLINE || type == TT_DELIMITER;
 }
 
-static void consume_tls_tokens() {
+static void consume_tls_tokens(bool* has_insert) {
     Token t;
     while (t= current(), !is_delimiter(t.type) && t.type != TT_LBRACE) {
         if (t.type == TT_EOTS) break;
+        if (t.type == TT_DIRECTIVE_INSERT) *has_insert= true;
         consume();
     }
 
@@ -64,6 +66,7 @@ static void consume_tls_tokens() {
             t= Token_array_get(&tokens, idx);
             if (t.type == TT_EOTS) break;
             if (t.type == TT_LBRACE) lbrace_count++;
+            else if (t.type == TT_DIRECTIVE_INSERT) *has_insert= true;
             else if (t.type == TT_RBRACE) lbrace_count--;
 
             consume();
@@ -78,7 +81,7 @@ static void eat_all_delimiters() {
 
 // split the token array into TokenSources for each tls
 //  and then pass these to the orchestrator for parsing
-int collect_tls(const TokenArray tokens_) {
+int collect_tls(const TokenArray tokens_, FileID file_id) {
     tokens= tokens_;
     idx= 0;
     line= 0;
@@ -91,26 +94,47 @@ int collect_tls(const TokenArray tokens_) {
         if (is_valid_tls_start(t.type)) {
             const size_t start= idx;
             const size_t start_line= line;
+            bool has_insert= false;
 
-            consume_tls_tokens();
+            consume_tls_tokens(&has_insert);
             const size_t end= idx;
 
-            const MyTokenSource source= (MyTokenSource) {
+            MyTokenSource source= (MyTokenSource) {
                 .data= tokens.data,
                 .current_idx= start,
                 .start_idx= start,
                 .end_idx= end,
-                .start_line= start_line
+                .start_line= start_line,
+                .max_tokens= -1
             };
 
-            logger_printf("Creating parse job for tls with %zu tokens starting line %zu.\n", end - start + 1, start_line);
-            add_job(create_parse_job(source, NO_DEPENDENCY));
+            if (has_insert) {
+                source= clone_source(source, end, start, start_line);
+            }
+
+            Job job=create_parse_job(source, NO_DEPENDENCY, file_id);
+            logger_printf("Creating parse job for tls with %zu tokens starting line %zu. In file %zu with job id: %zu\n",
+                end - start + 1, start_line,
+                current_job.file_id,
+                job.job_id
+            );
+            add_job(job);
         } else {
             if (t.type == TT_EOTS) break;
 
-            logger_error("Found token at start of tls that is not a valid start");
+            const MyTokenSource source= (MyTokenSource) {
+                .data= tokens.data,
+                .current_idx= idx,
+                .start_idx= idx,
+                .end_idx= tokens.pos,
+                .start_line= line
+            };
+
+            logger_fadd("<<ERROR>> Found token at start of tls that is not a valid start ");
             print_token(t, -1, -1, source);
+            logger_newline();
             logger_commit();
+            return EC_FAIL;
         }
     }
 

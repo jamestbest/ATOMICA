@@ -9,7 +9,6 @@
 
 #include "shared/Array.h"
 
-
 typedef enum {
     TT_LBRACE,
     TT_RBRACE,
@@ -31,6 +30,7 @@ typedef enum {
     TT_KEYWORD_FOR,
     TT_KEYWORD_IF,
     TT_KEYWORD_IMPORT,
+    TT_KEYWORD_EXPORT,
     TT_KEYWORD_RET,
     TT_KEYWORD_TO,
     TT_KEYWORD_WHILE,
@@ -154,12 +154,15 @@ typedef enum {
 
     TT_INTERNAL_OPERATOR_END,
 
+    TT_INTERNAL_DIRECTIVE_START,
+    TT_DIRECTIVE_INSERT,
+    TT_DIRECTIVE_RUN,
+    TT_INTERNAL_DIRECTIVE_END,
+
     TT_COLON, // :
     TT_COMMA, // ,
 
     TT_DOLLAR, // $
-
-    TT_HASH, // # // todo: change to all TT_DIR_*
 
     TT_LIT_INT,
     TT_LIT_FLOAT,
@@ -182,22 +185,10 @@ typedef struct {
     uint32_t buffer_index: 24;
 } Token;
 
-typedef struct {
-    Token* data; // todo: make this uint32_t somehow
-    uint32_t start_idx;
-    uint32_t current_idx;
-    uint32_t end_idx; // inclusive
-    uint32_t start_line;
-} MyTokenSource;
-
 ARRAY_PROTO(Token, Token)
 
 const char* token_type_string(MyTokenType type);
-void print_token(Token t, size_t line, size_t col, MyTokenSource source);
 void print_token_value(Token t);
-void print_all_tokens(MyTokenSource source);
 void set_token_cache(size_t line, size_t token_index);
-
-#define PRINT_TOKEN(t) print_token(t, -1, -1, source)
 
 #endif //ATOMICA_TOKEN_H

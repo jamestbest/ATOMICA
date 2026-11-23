@@ -34,9 +34,15 @@ void logger_commit() {
     pthread_mutex_unlock(&print_lock);
 }
 
+void logger_vfprintf(FILE* file, const char* message, va_list args) {
+    pthread_mutex_lock(&print_lock);
+    vfprintf(file, message, args);
+    pthread_mutex_unlock(&print_lock);
+}
+
 void logger_fprint(FILE* file, const char* message) {
     pthread_mutex_lock(&print_lock);
-    fprintf(file, "%s\n", message);
+    fprintf(file, "%s", message);
     pthread_mutex_unlock(&print_lock);
 }
 
@@ -57,6 +63,13 @@ void logger_printf(const char* message, ...) {
 
 void logger_error(const char* error_message) {
     logger_fprint(stderr, error_message);
+}
+
+void logger_errorf(const char* error_message, ...) {
+    va_list args;
+    va_start(args, error_message);
+    logger_vfprintf(stderr, error_message, args);
+    va_end(args);
 }
 
 void logger_fadd(const char* format, ...) {

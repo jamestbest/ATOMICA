@@ -8,8 +8,6 @@
 #include "Parser.h"
 #include "Lexer/Token.h"
 
-extern __thread MyTokenSource source;
-
 void eat_all_delimiters();
 Token current();
 Token consume();

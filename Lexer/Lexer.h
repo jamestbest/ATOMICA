@@ -17,5 +17,8 @@ typedef struct {
 LexRes lex(const char* file_path);
 uint8_t* get_token_end_ptr(Token t);
 uint8_t* get_token_start_ptr(Token t);
+const char* lex_get_string(size_t buffer_index_start);
+
+void set_lex_buffer(Buffer buff_);
 
 #endif //ATOMICA_LEXER_H

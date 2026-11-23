@@ -8,11 +8,16 @@
 
 #include "ParserInternal.h"
 #include "SharedParsing.h"
+#include "Gluon/Gluon.h"
+#include "Gluon/File/File.h"
+#include "Gluon/Jobs/Job.h"
+#include "Lexer/Lexer.h"
 #include "Lexer/Token.h"
 #include "Logger/Logger.h"
 #include "Parserr/Parserr.h"
 #include "shared/String.h"
 #include "Shunt/ShuntingYard.h"
+#include "Lexer/TokenSource.h"
 
 // todo: _add functions return u64, but we store u32s
 // todo: zero init node_array or write INDEX_NONE (don't do that)
@@ -24,7 +29,6 @@ __thread NodeArray node_array;
 __thread NodeIndexArray extra_array;
 
 #define EXPECTED_NODE_COUNT 100
-// _Static_assert(EXPECTED_NODE_COUNT > 1, "");
 
 #define MAX_ENTRY_POINTS 10
 NodeIndex entry_points[MAX_ENTRY_POINTS];
@@ -32,6 +36,7 @@ size_t entry_point_pos;
 
 NodeRes parse(MyTokenSource source_) {
     source= source_;
+
     source.current_idx= source.start_idx;
 
     setup_node_array();    // todo: this will corrupt results that are returned
@@ -69,7 +74,7 @@ static NodeRes parse_top_level_statement() {
         case TT_KEYWORD_ENTRY: return parse_entry_statement();
         default: {
             parse_error("Expected variable declaration or import statement at top level of program. Found: ");
-            PRINT_TOKEN(t);
+            print_token(t, -1, -1, source);
             logger_newline();
             return NODE_FAIL(EC_FAIL);
         }
@@ -600,7 +605,7 @@ NodeRes parse_type() {
     }
 
     parse_error("Unable to parse type. Starter token is not valid\n");
-    PRINT_TOKEN(current());
+    print_token(current(), -1, -1, source);
     return NODE_FAIL(EC_FAIL);
 
 parse_type_postfix:
@@ -647,6 +652,25 @@ parse_array_literal_no_elements:
     return NODE_SUCC(ni);
 }
 
+static int parse_directive_insert() {
+    const size_t insert_idx= source.current_idx;
+
+    source.current_idx++;
+
+    const NodeRes dollar_res= parse_dollar();
+    if (dollar_res.errcode != EC_SUCCESS) return dollar_res.errcode;
+
+    // todo: node destroy this dollar_res.index after getting it's source
+
+    const size_t end_of_insert= source.current_idx;
+
+    const MyTokenSource new_source= *(MyTokenSource*)NodeIndex_array_ptr(&extra_array, GET_LHS(dollar_res.index));
+    combine_source(&source, new_source, insert_idx, end_of_insert - insert_idx);
+    source.current_idx= insert_idx;
+
+    return EC_SUCCESS;
+}
+
 // {}
 static NodeRes parse_code_literal() {
     Token brace;
@@ -657,7 +681,9 @@ static NodeRes parse_code_literal() {
     MyTokenSource new_source= {
         .data= source.data,
         .start_idx= source.current_idx,
-        .end_idx= source.current_idx
+        .current_idx= source.current_idx,
+        .end_idx= source.current_idx,
+        .max_tokens= source.max_tokens,
     };
 
     const NodeIndex ni= node_create(NT_EXPR_CODE_LITERAL, brace);
@@ -674,6 +700,9 @@ static NodeRes parse_code_literal() {
         consume();
     }
     new_source.end_idx= source.current_idx - 1;
+
+    // todo: how to find start_line
+    new_source= clone_source(new_source, new_source.end_idx, new_source.current_idx, -10);
 
     if (!EXPECT(TT_RBRACE)) {
         return unexpected(TT_RBRACE, current(), "Code literals must be enclosed in ${}\n");
@@ -799,6 +828,12 @@ static NodeRes parse_import_statement() {
 
     const NodeIndex ni= node_create(NT_IMPORT_STATEMENT, import_kw);
     SET_LHS(TOKEN_AS_NODE_INDEX(file_string), ni);
+
+    // todo: change in some way
+    const FileInfo fi= FileInfo_arrayg_get(&file_infos, current_job.file_id);
+    const char* file_to_lex= replace_filename(fi.file_path, lex_get_string(file_string.buffer_index));
+    const size_t file_id= compile_file(file_to_lex, current_job.file_id);
+    SET_RHS(file_id, ni);
 
     return NODE_SUCC(ni);
 }
@@ -1406,11 +1441,23 @@ void eat_all_delimiters() {
     while (is_delimiter(current().type)) consume();
 }
 
+void check_forward(size_t offset) {
+    if (source.current_idx + offset > source.end_idx) return;
+
+    if ((source.data[source.current_idx + offset]).type == TT_DIRECTIVE_INSERT) {
+        parse_directive_insert();
+    }
+}
+
 Token current() {
-    if (source.current_idx > source.end_idx) return (Token) {
-        .type= TT_EOTS,
-        .buffer_index= -1
-    };
+    check_forward(0);
+
+    if (source.current_idx > source.end_idx) {
+        return (Token) {
+            .type= TT_EOTS,
+            .buffer_index= -1
+        };
+    }
 
     return source.data[source.current_idx];
 }
@@ -1426,6 +1473,10 @@ Token peek() {
 }
 
 Token peer(size_t offset) {
+    for (int i = 0; i < offset; ++i) {
+        check_forward(i);
+    }
+
     if (source.current_idx + offset > source.end_idx) return (Token) {
         .type= TT_EOTS,
         .buffer_index= -1

@@ -11,6 +11,8 @@
 #include <string.h>
 
 #include "Token.h"
+#include "Gluon/Gluon.h"
+#include "Gluon/File/File.h"
 
 #include "shared/Array.h"
 #include "Logger/Logger.h"
@@ -29,15 +31,16 @@ static bool is_numeric_base(uint32_t character, uint8_t base);
 static bool is_alpha_numeric(uint32_t character);
 static Token lex_string();
 
-static Buffer buff;
-static __thread size_t cursor;
-
 ARRAY_ADD(Token, Token)
+
+static __thread size_t cursor;
+static __thread Buffer buff;
 
 static Token lex_token();
 static Token lex_comment();
 static Token lex_identifier();
 static Token lex_numeric_literal();
+static Token lex_directives();
 
 LexRes lex(const char* file_path) {
     TokenArray tokens= Token_array_construct(5);
@@ -69,7 +72,14 @@ LexRes lex(const char* file_path) {
     };
     print_all_tokens(source);
 
+    // todo: add guard to this
+    FileInfo_arrayg_ptr(&file_infos, current_job.file_id)->buffer= buff;
+
     return (LexRes){.tokens= tokens, .errcode= EC_SUCCESS};
+}
+
+void set_lex_buffer(Buffer buff_) {
+    buff= buff_;
 }
 
 static size_t get_token_end(size_t start) {
@@ -130,7 +140,7 @@ Token lex_token() {
             break;
         }
         case '?': res= create_simple_token(TT_OPERATOR_AMBIGUOUS_QUESTION); break;
-        case '#': res= create_simple_token(TT_HASH); break;
+        case '#': return lex_directives();
         case ';': res= create_simple_token(TT_DELIMITER); break;
 
         case '=': {
@@ -306,6 +316,39 @@ lex_cont:
     return (Token){.type= TT_ERROR};
 }
 
+static Token lex_directives() {
+    Token res= create_simple_token(TT_INTERNAL_DIRECTIVE_START);
+
+    consume(); // eat the hash
+
+    const size_t start= cursor;
+    const uint32_t start_char= current();
+
+    while (is_alpha(current())) consume();
+    const uint32_t end= cursor;
+
+#define MATCH_RES(en) { res.type= en; return res; }
+#define MATCH_CASE(kw, en) if(strncmp(start_ptr, kw, (sizeof(kw) - 1)) == 0) MATCH_RES(en)
+
+    const char* start_ptr= (const char*)&buff.data[start];
+    switch (start_char) {
+        case 'i': {
+            MATCH_CASE("insert", TT_DIRECTIVE_INSERT)
+            break;
+        }
+        case 'r': {
+            MATCH_CASE("run", TT_DIRECTIVE_RUN)
+            break;
+        }
+        default: break;
+    }
+
+    logger_errorf("Unknown directive found %.*s", end - start + 1, start_ptr);
+    return create_simple_token(TT_ERROR);
+#undef MATCH_RES
+#undef MATCH_CASE
+}
+
 static Token lex_comment() {
     consume();
     consume();
@@ -357,6 +400,7 @@ static Token lex_identifier() {
         case 'e': {
             MATCH_CASE("else", TT_KEYWORD_ELSE)
             MATCH_CASE("entry", TT_KEYWORD_ENTRY)
+            MATCH_CASE("export", TT_KEYWORD_EXPORT)
             break;
         }
         case 'f': {
@@ -437,7 +481,7 @@ static Token lex_identifier() {
 
     return res;
 
-#undef IS_KW
+#undef MATCH_RES
 #undef MATCH_CASE
 }
 
@@ -600,6 +644,20 @@ uint32_t peer(size_t offset) {
     }
 
     return res.character;
+}
+
+
+const char* lex_get_string(const size_t buffer_index_start) {
+    const FileInfo info= FileInfo_arrayg_get(&file_infos, current_job.file_id);
+    buff= info.buffer;
+    const size_t end= get_token_end(buffer_index_start);
+    const size_t size= end - buffer_index_start - 2;
+
+    uint8_t* res= malloc(size + 1);
+    memcpy(res, &info.buffer.data[buffer_index_start] + 1, size);
+    res[size]= '\0';
+
+    return (char*)res;
 }
 
 

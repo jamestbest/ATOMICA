@@ -5,11 +5,14 @@ ExitCodes :: data {
     EXIT_FAILURE= 1
 }
 
+#insert ${ #insert ${ x: i4 } = 0 }
+// #insert ${ x: i4 = 0 }
+
 a: i4?= 12
 y :: 18
 test :: 1 + -2 + a++ - -(--a) + a?y + a?
 
-x :: import "file.atm"
+x :: import "901_fib.atm"
 
 entry main :: (argc: i4, argv: []string): i4 {
     if (argc != 3) {

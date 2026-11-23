@@ -1,0 +1,9 @@
+entry main :: (argc: i4, argv: []string): !void {
+    ret fib(argc * 3 + 1)
+}
+
+fib :: (n: i4): i4 {
+    if (n < 2) ret n
+
+    ret fib(n - 1) + fib(n - 2)
+}

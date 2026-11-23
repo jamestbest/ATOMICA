@@ -15,6 +15,7 @@ NodeRes parse_error(const char* message, ...) {
     va_start(args, message);
 
     logger_vfadd(message, args);
+    logger_commit();
 
     va_end(args);
 
@@ -22,14 +23,15 @@ NodeRes parse_error(const char* message, ...) {
 }
 
 NodeRes unexpected(MyTokenType expected_type, Token received, char* message, ...) {
-    logger_fadd("Expected token type '%s' but received: ", token_type_string(expected_type));
-    PRINT_TOKEN(received);
+    logger_fadd("<<ERROR>> Expected token type '%s' but received: ", token_type_string(expected_type));
+    print_token(received, -1, -1, source);
     logger_fadd(" In context: ");
 
     va_list args;
     va_start(args, message);
 
     logger_vfadd(message, args);
+    logger_commit();
 
     va_end(args);
 

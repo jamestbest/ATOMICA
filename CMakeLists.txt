@@ -46,7 +46,11 @@ add_executable(ATOMICA main.c
         shared/Buffer.c
         shared/Buffer.h
         Logger/Logger.c
-        Logger/Logger.h)
+        Logger/Logger.h
+        Gluon/File/File.c
+        Gluon/File/File.h
+        Lexer/TokenSource.c
+        Lexer/TokenSource.h)
 
 
 add_executable(EXAMPLES_300

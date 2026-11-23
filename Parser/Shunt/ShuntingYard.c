@@ -129,7 +129,7 @@ bool is_valid_expr_start(const MyTokenType type) {
 
 // right side of ?!
 bool is_valid_qe_expr_start(const MyTokenType type) {
-    return is_valid_expr_start(type) || type == TT_OPERATOR_AMBIGUOUS_BITWISE_OR;
+    return is_valid_expr_start(type) || type == TT_OPERATOR_BINARY_BITWISE_OR;
 }
 
 #define PRECEDENCE_OFFSET (TT_INTERNAL_OPERATOR_START - 1)
@@ -232,9 +232,10 @@ bool is_operator(const MyTokenType type) {
 
 static NodeRes build_unary_operator(const Token operator, NodeIndexArray* output_s) {
     if (output_s->pos < 1) {
-        parse_error("Tried to form a unary operator, but there are no operands on the stack.\nOperator: ");
-        PRINT_TOKEN(operator);
+        logger_fadd("Tried to form a unary operator, but there are no operands on the stack.\nOperator: ");
+        print_token(operator, -1, -1, source);
         logger_newline();
+        logger_commit();
         return NODE_FAIL(EC_FAIL);
     }
 
@@ -246,9 +247,10 @@ static NodeRes build_unary_operator(const Token operator, NodeIndexArray* output
 
 static NodeRes build_ternary_operator(const Token operator, NodeIndexArray* output_s) {
     if (output_s->pos < 3) {
-        parse_error("Tried to form a ternary operator, but there are less than three operands on the stack.\nOperator:");
-        PRINT_TOKEN(operator);
+        logger_fadd("Tried to form a ternary operator, but there are less than three operands on the stack.\nOperator:");
+        print_token(operator, -1, -1, source);
         logger_newline();
+        logger_commit();
         return NODE_FAIL(EC_FAIL);
     }
 
@@ -274,9 +276,10 @@ static NodeRes build_ternary_operator(const Token operator, NodeIndexArray* outp
 
 static NodeRes build_binary_operator(const Token operator, NodeIndexArray* output_s) {
     if (output_s->pos < 2) {
-        parse_error("Tried to form a binary operator, but there are only one or fewer operands on the stack.\nOperator: ");
-        PRINT_TOKEN(operator);
+        logger_fadd("Tried to form a binary operator, but there are only one or fewer operands on the stack.\nOperator: ");
+        print_token(operator, -1, -1, source);
         logger_newline();
+        logger_commit();
         return NODE_FAIL(EC_FAIL);
     }
 
@@ -363,9 +366,6 @@ static void disambiguate_operator_type(Token* token, TokenArray* operator_s, EXP
             break;
         }
 
-        case TT_OPERATOR_AMBIGUOUS_BITWISE_OR: // todo x|y|z
-            break;
-
         case TT_OPERATOR_AMBIGUOUS_PLUS_PLUS: {
             token->type= (expecting == EXPECTING_OPERATOR_LIKE) ? TT_OPERATOR_POSTFIX_PLUS_PLUS : TT_OPERATOR_PREFIX_PLUS_PLUS;
             break;
@@ -409,7 +409,7 @@ static NodeRes parse_operator_ternary_capture() {
         assert(false && "Attempted to parse ternary capture, but did not start with ternary operator");
     }
 
-    if (check(TT_OPERATOR_AMBIGUOUS_BITWISE_OR)) {
+    if (check(TT_OPERATOR_BINARY_BITWISE_OR)) {
         return parse_error("Captures must not be empty.\n");
     }
 
@@ -437,8 +437,8 @@ static NodeRes parse_operator_ternary_capture() {
         ni= node_create(NT_IDENTIFIER, first_ident);
     }
 
-    if (!EXPECT(TT_OPERATOR_AMBIGUOUS_BITWISE_OR)) {
-        return unexpected(TT_OPERATOR_AMBIGUOUS_BITWISE_OR, current(),
+    if (!EXPECT(TT_OPERATOR_BINARY_BITWISE_OR)) {
+        return unexpected(TT_OPERATOR_BINARY_BITWISE_OR, current(),
             "Capture's must be enclosed in |:x|\n");
     }
 
@@ -577,9 +577,10 @@ NodeRes shunt(bool allow_trailing_parens) {
 
                 if (Token_array_empty(&operator_s)) {
                     if (!allow_trailing_parens) {
-                        parse_error("Found mismatching parenthesis in expression.\nExtra right paren: ");
-                        PRINT_TOKEN(r_paren_tok);
+                        logger_fadd("Found mismatching parenthesis in expression.\nExtra right paren: ");
+                        print_token(r_paren_tok, -1, -1, source);
                         logger_newline();
+                        logger_commit();
                         return NODE_FAIL(EC_FAIL);
                     }
                     end= true;
@@ -599,9 +600,10 @@ NodeRes shunt(bool allow_trailing_parens) {
 
                 if (t.type != TT_LPAREN) {
                     if (!allow_trailing_parens) {
-                        parse_error("Found mismatching parenthesis in expression.\nExtra right paren: ");
-                        PRINT_TOKEN(r_paren_tok);
+                        logger_fadd("Found mismatching parenthesis in expression.\nExtra right paren: ");
+                        print_token(r_paren_tok, -1, -1, source);
                         logger_newline();
+                        logger_commit();
                         return NODE_FAIL(EC_FAIL);
                     }
                     end= true;
@@ -625,9 +627,10 @@ NodeRes shunt(bool allow_trailing_parens) {
     while (!Token_array_empty(&operator_s)) {
         const Token op= Token_array_pop(&operator_s);
         if (op.type == TT_LPAREN) {
-            parse_error("Mismatched parenthesis, got an lparen without rparen to match.\nLParen: ");
-            PRINT_TOKEN(op);
+            logger_fadd("Mismatched parenthesis, got an lparen without rparen to match.\nLParen: ");
+            print_token(op, -1, -1, source);
             logger_newline();
+            logger_commit();
             return NODE_FAIL(EC_FAIL);
         }
 

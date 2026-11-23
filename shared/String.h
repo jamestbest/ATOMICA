@@ -5,6 +5,7 @@
 #ifndef ATOMICA_STRING_H
 #define ATOMICA_STRING_H
 
-// void newline();
+const char* get_filename(const char* file_path);
+const char* replace_filename(const char* file_path, const char* new_filename);
 
 #endif //ATOMICA_STRING_H

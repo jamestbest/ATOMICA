@@ -17,6 +17,7 @@ void logger_vfadd(const char* format, va_list args);
 void logger_newline();
 
 void logger_error(const char* error_message);
+void logger_errorf(const char* error_message, ...);
 void logger_fprint(FILE* file, const char* message);
 void logger_print(const char* message);
 void logger_printf(const char* message, ...);
